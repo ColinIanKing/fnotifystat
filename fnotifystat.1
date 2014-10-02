@@ -1,0 +1,64 @@
+.\"                                      Hey, EMACS: -*- nroff -*-
+.\" First parameter, NAME, should be all caps
+.\" Second parameter, SECTION, should be 1-8, maybe w/ subsection
+.\" other parameters are allowed: see man(7), man(1)
+.TH FNOTIFYSTAT 8 "October 2, 2014"
+.\" Please adjust this date whenever revising the manpage.
+.\"
+.\" Some roff macros, for reference:
+.\" .nh        disable hyphenation
+.\" .hy        enable hyphenation
+.\" .ad l      left justify
+.\" .ad b      justify to both left and right margins
+.\" .nf        disable filling
+.\" .fi        enable filling
+.\" .br        insert line break
+.\" .sp <n>    insert n+1 empty lines
+.\" for manpage-specific macros, see man(7)
+.SH NAME
+fnotifystat \- a tool to measure system events.
+.br
+
+.SH SYNOPSIS
+.B fnotifystat
+.RI [options] " [delay " [count]]
+.br
+
+.SH DESCRIPTION
+fnotifystat is a program that dumps the file system activity in a given period of time.
+
+.SH OPTIONS
+fnotifystat options are as follow:
+.TP
+.B \-d
+strip full directory path off the filenames.
+.TP
+.B \-h
+show help
+.TP
+.B \-t N
+only display the top busiest N files.
+.TP
+.B \-v
+verbose mode, dump all file activity.
+.SH EXAMPLES
+.LP
+Dump file activity every second until stopped.
+.RS 8
+sudo fnotifystat
+.RE
+.LP
+Dump the top 10 active files every 60 seconds until stopped.
+.RS 8
+sudo fnotifystat \-t 10 60
+.RE
+.LP
+Dump file acivity every 10 seconds just 6 times.
+.RS 8
+sudo fnotifystat 10 6
+.RE
+.SH AUTHOR
+fnotifystat was written by Colin King <colin.king@canonical.com>
+.PP
+This manual page was written by Colin King <colin.king@canonical.com>,
+for the Ubuntu project (but may be used by others).

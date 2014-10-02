@@ -1,0 +1,17 @@
+Source: fnotifystat
+Section: utils
+Priority: optional
+Maintainer: Colin King <colin.king@canonical.com>
+Standards-Version: 3.9.5
+Build-Depends: debhelper (>= 7)
+Homepage: http://kernel.ubuntu.com/~cking/fnotifystat
+
+Package: fnotifystat
+Architecture: linux-any
+Depends: ${shlibs:Depends}, ${misc:Depends}
+Description: a file activity monitoring tool
+ Fnotifystat periodically dumps out the activity on files in the
+ system. It can be used to identify rogue file activity and discover
+ which processes are performing open/close/read/write operations
+ on the files.
+
