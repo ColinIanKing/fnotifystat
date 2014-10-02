@@ -279,16 +279,22 @@ static int fnotify_event_add(const struct fanotify_event_metadata *metadata)
 	localtime_r(&now, &tm);
 
 	fs = file_stat_get(filename, metadata->pid);
-	if (metadata->mask & FAN_OPEN)
+	if (metadata->mask & FAN_OPEN) {
 		fs->open++;
-	if (metadata->mask & (FAN_CLOSE_WRITE | FAN_CLOSE_NOWRITE))
+		fs->total++;
+	}
+	if (metadata->mask & (FAN_CLOSE_WRITE | FAN_CLOSE_NOWRITE)) {
 		fs->close++;
-	if (metadata->mask & FAN_ACCESS)
+		fs->total++;
+	}
+	if (metadata->mask & FAN_ACCESS) {
 		fs->read++;
-	if (metadata->mask & (FAN_MODIFY | FAN_CLOSE_WRITE))
+		fs->total++;
+	}
+	if (metadata->mask & (FAN_MODIFY | FAN_CLOSE_WRITE)) {
 		fs->write++;
-
-	fs->total++;
+		fs->total++;
+	}
 
 	if (opt_flags & OPT_VERBOSE) {
 		printf("%2.2d/%2.2d/%-2.2d %2.2d:%2.2d:%2.2d %5d %4.4s %s\n",
