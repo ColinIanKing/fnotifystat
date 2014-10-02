@@ -1,3 +1,10 @@
+fnotifystat (0.01.01-1) unstable; urgency=medium
+
+  * Bump makefile
+  * Ensure total matches number of total operations
+
+ -- Colin King <colin.king@canonical.com>  Thu, 2 Oct 2014 20:29:00 +0000
+
 fnotifystat (0.01.00-1) unstable; urgency=low
 
   * Initial version 
