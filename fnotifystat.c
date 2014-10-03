@@ -42,6 +42,7 @@
 #define OPT_VERBOSE		(0x00000001)
 #define OPT_DIRNAME_STRIP 	(0x00000002)
 #define OPT_PID			(0x00000004)
+#define OPT_SORT_BY_PID		(0x00000008)
 
 /* fnotify file activity stats */
 typedef struct file_stat {
@@ -327,6 +328,14 @@ int file_stat_cmp(const void *p1, const void *p2)
 	file_stat_t **fs1 = (file_stat_t **)p1;
 	file_stat_t **fs2 = (file_stat_t **)p2;
 
+	if (opt_flags & OPT_SORT_BY_PID) {
+		if ((*fs1)->pid < (*fs2)->pid)
+			return -1;
+		if ((*fs1)->pid > (*fs2)->pid)
+			return 1;
+		/* Fall through if pids equal */
+	}
+
 	if ((*fs1)->total == (*fs2)->total)
 		return strcmp((*fs1)->path, (*fs2)->path);
 	
@@ -396,10 +405,12 @@ void show_usage(void)
 {
 	printf("%s, version %s\n\n", APP_NAME, VERSION);
 	printf("Options are:\n"
-		"  -d\tstrip directory off the filenames\n"
-		"  -h\tshow this help\n"
-		"  -t N\tshow just the busiest N files\n"
-		"  -v\tverbose mode, dump out all file activity\n");
+		"  -d     strip directory off the filenames\n"
+		"  -h     show this help\n"
+		"  -p PID collect stats for just process with pid PID\n"
+		"  -P     sort stats by process ID\n"
+		"  -t N   show just the busiest N files\n"
+		"  -v     verbose mode, dump out all file activity\n");
 }
 
 int main(int argc, char **argv)
@@ -414,7 +425,7 @@ int main(int argc, char **argv)
 	unsigned long count = 0, top = -1;
 
 	for (;;) {
-		int c = getopt(argc, argv, "hvdt:p:");
+		int c = getopt(argc, argv, "hvdt:p:P");
 		if (c == -1)
 			break;
 		switch (c) {
@@ -447,6 +458,9 @@ int main(int argc, char **argv)
 				exit(EXIT_FAILURE);
 			}
 			opt_flags |= OPT_PID;
+			break;
+		case 'P':
+			opt_flags |= OPT_SORT_BY_PID;
 			break;
 		default:
 			show_usage();
