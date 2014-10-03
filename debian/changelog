@@ -1,3 +1,15 @@
+fnotifystat (0.01.02-1) unstable; urgency=medium
+
+  * Makefile: bump version
+  * Free filename, stop memory leak
+  * Add process name info
+  * Add -c option
+  * Add -P sort option
+  * Add -p option
+  * Add more comments, add more constified args
+
+ -- Colin King <colin.king@canonical.com>  Fri, 3 Oct 2014 12:38:00 +0000
+
 fnotifystat (0.01.01-1) unstable; urgency=medium
 
   * Bump makefile
