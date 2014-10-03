@@ -42,23 +42,22 @@
 #define OPT_VERBOSE		(0x00000001)
 #define OPT_DIRNAME_STRIP 	(0x00000002)
 
+/* fnotify file activity stats */
 typedef struct file_stat {
-	char 		*path;
-	pid_t		pid;
-	uint64_t	open;
-	uint64_t	close;
-	uint64_t	read;
-	uint64_t	write;
-	uint64_t	total;
-	struct file_stat *next;
+	char 		*path;	/* Pathname of file */
+	pid_t		pid;	/* PID of process touching file */
+	uint64_t	open;	/* Count of opens */
+	uint64_t	close;	/* Count of closes */
+	uint64_t	read;	/* Count of reads */
+	uint64_t	write;	/* Count of writes */
+	uint64_t	total;	/* Total count */
+	struct file_stat *next;	/* Next item in hash list */
 } file_stat_t;
 
-
-static file_stat_t *file_stats[TABLE_SIZE];
-static size_t file_stats_size;
-static unsigned int opt_flags;
-static volatile bool stop_fnotifystat = false;
-
+static file_stat_t *file_stats[TABLE_SIZE];	/* hash of file stats */
+static size_t file_stats_size;			/* number of items in hash table */
+static unsigned int opt_flags;			/* option flags */
+static volatile bool stop_fnotifystat = false;	/* true -> stop fnotifystat */
 
 /*
  *  handle_sigint()
@@ -72,7 +71,7 @@ static void handle_sigint(int dummy)
 }
 
 /*
- *  timeval_double
+ *  timeval_double()
  *      timeval to a double
  */
 static inline double timeval_double(const struct timeval *tv)
@@ -84,14 +83,14 @@ static inline double timeval_double(const struct timeval *tv)
  *  hash_pjw()
  *	Hash a string, from Aho, Sethi, Ullman, Compiling Techniques.
  */
-static unsigned long hash_pjw(const char *str, pid_t pid)
+static unsigned long hash_pjw(const char *str, const pid_t pid)
 {
   	unsigned long h = pid;
 
 	while (*str) {
 		unsigned long g;
 		h = (h << 4) + (*str);
-		if (0 != (g = h&0xf0000000)) {
+		if (0 != (g = h & 0xf0000000)) {
 			h = h ^ (g >> 24);
 			h = h ^ g;
 		}
@@ -101,7 +100,12 @@ static unsigned long hash_pjw(const char *str, pid_t pid)
   	return h % TABLE_SIZE;
 }
 
-static file_stat_t *file_stat_get(const char *str, pid_t pid)
+/*
+ *  file_stat_get()
+ *	get file stats on a file touched by a given process by PID.
+ *	existing stats are returned, new stats are allocated and returned.
+ */
+static file_stat_t *file_stat_get(const char *str, const pid_t pid)
 {
 	unsigned long h = hash_pjw(str, pid);
 	file_stat_t *fs = file_stats[h];
@@ -309,6 +313,11 @@ static int fnotify_event_add(const struct fanotify_event_metadata *metadata)
 	return 0;
 }
 
+/*
+ *  file_stat_cmp()
+ *	compare file stats, sort by total and if they are
+ *	the same, sort by pathname
+ */
 int file_stat_cmp(const void *p1, const void *p2)
 {
 	file_stat_t **fs1 = (file_stat_t **)p1;
@@ -323,7 +332,11 @@ int file_stat_cmp(const void *p1, const void *p2)
 		return 1;
 }
 
-static void file_stat_dump(double duration, unsigned long top)
+/*
+ *  file_stat_dump()
+ *	dump file stats and free hash table for next iteration
+ */
+static void file_stat_dump(const double duration, const unsigned long top)
 {
 	file_stat_t **sorted;
 	uint64_t i, j;
@@ -371,6 +384,10 @@ static void file_stat_dump(double duration, unsigned long top)
 	printf("\n");
 }
 
+/*
+ *  show_usage()
+ *	how to use
+ */
 void show_usage(void)
 {
 	printf("%s, version %s\n\n", APP_NAME, VERSION);
