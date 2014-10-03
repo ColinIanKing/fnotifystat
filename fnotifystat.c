@@ -47,6 +47,7 @@
 #define OPT_PID			(0x00000004)
 #define OPT_SORT_BY_PID		(0x00000008)
 #define OPT_CUMULATIVE		(0x00000010)
+#define OPT_TIMESTAMP		(0x00000020)
 
 
 /* fnotify file activity stats */
@@ -438,7 +439,7 @@ int file_stat_cmp(const void *p1, const void *p2)
 
 	if ((*fs1)->total == (*fs2)->total)
 		return strcmp((*fs1)->path, (*fs2)->path);
-	
+
 	if ((*fs1)->total > (*fs2)->total)
 		return -1;
 	else
@@ -453,10 +454,11 @@ static void file_stat_dump(const double duration, const unsigned long top)
 {
 	file_stat_t **sorted;
 	uint64_t i, j;
+	char ts[32];
 
 	if (!file_stats_size)
 		return;
-	
+
 	sorted = calloc(file_stats_size, sizeof(file_stat_t *));
 	if (sorted == NULL)
 		pr_error("allocating file stats");
@@ -471,10 +473,23 @@ static void file_stat_dump(const double duration, const unsigned long top)
 		if (!(opt_flags & OPT_CUMULATIVE))
 			file_stats[i] = NULL;
 	}
-	
+
 	qsort(sorted, file_stats_size, sizeof(file_stat_t *), file_stat_cmp);
 
-	printf(" Total   Open  Close   Read  Write  PID  Process         Pathname\n");
+	if (opt_flags & OPT_TIMESTAMP) {
+		time_t now;
+		struct tm tm;
+
+		time(&now);
+		localtime_r(&now, &tm);
+
+		snprintf(ts, sizeof(ts), " [%2.2d/%2.2d/%-2.2d %2.2d:%2.2d:%2.2d]\n",
+			tm.tm_mday, tm.tm_mon + 1, (tm.tm_year+1900) % 100,
+			tm.tm_hour, tm.tm_min, tm.tm_sec);
+	} else {
+		*ts = '\0';
+	}
+	printf(" Total   Open  Close   Read  Write  PID  Process         Pathname%s\n", ts);
 	for (j = 0; j < file_stats_size; j++) {
 		if (top && j <= top) {
 			printf("%6.2f %6.2f %6.2f %6.2f %6.2f %5d %-15.15s %s\n",
@@ -514,6 +529,7 @@ void show_usage(void)
 		"  -p PID collect stats for just process with pid PID\n"
 		"  -P     sort stats by process ID\n"
 		"  -t N   show just the busiest N files\n"
+		"  -T     show timestamp\n"
 		"  -v     verbose mode, dump out all file activity\n");
 }
 
@@ -528,7 +544,7 @@ int main(int argc, char **argv)
 	unsigned long count = 0, top = -1;
 
 	for (;;) {
-		int c = getopt(argc, argv, "hvdt:p:Pc");
+		int c = getopt(argc, argv, "hvdt:p:PcT");
 		if (c == -1)
 			break;
 		switch (c) {
@@ -555,6 +571,9 @@ int main(int argc, char **argv)
 				fprintf(stderr, "Value for -t option must be 1 or more.\n");
 				exit(EXIT_FAILURE);
 			}
+			break;
+		case 'T':
+			opt_flags |= OPT_TIMESTAMP;
 			break;
 		case 'p':
 			errno = 0;
@@ -622,7 +641,7 @@ int main(int argc, char **argv)
 			fd_set rfds;
 			int ret;
 			double remaining;
-	
+
 			if (gettimeofday(&tv2, NULL) < 0)
 				pr_error("gettimeofday failed");
 
