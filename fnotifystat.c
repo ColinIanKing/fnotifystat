@@ -43,6 +43,7 @@
 #define OPT_DIRNAME_STRIP 	(0x00000002)
 #define OPT_PID			(0x00000004)
 #define OPT_SORT_BY_PID		(0x00000008)
+#define OPT_CUMULATIVE		(0x00000010)
 
 /* fnotify file activity stats */
 typedef struct file_stat {
@@ -370,7 +371,8 @@ static void file_stat_dump(const double duration, const unsigned long top)
 			sorted[j++] = fs;
 			fs = fs->next;
 		}
-		file_stats[i] = NULL;
+		if (!(opt_flags & OPT_CUMULATIVE))
+			file_stats[i] = NULL;
 	}
 	
 	qsort(sorted, file_stats_size, sizeof(file_stat_t *), file_stat_cmp);
@@ -388,11 +390,14 @@ static void file_stat_dump(const double duration, const unsigned long top)
 				(opt_flags & OPT_DIRNAME_STRIP) ?
 					basename(sorted[j]->path) : sorted[j]->path);
 		}
-		free(sorted[j]->path);
-		free(sorted[j]);
+		if (!(opt_flags & OPT_CUMULATIVE)) {
+			free(sorted[j]->path);
+			free(sorted[j]);
+		}
 	}
 	free(sorted);
-	file_stats_size = 0;
+	if (!(opt_flags & OPT_CUMULATIVE))
+		file_stats_size = 0;
 
 	printf("\n");
 }
@@ -405,6 +410,7 @@ void show_usage(void)
 {
 	printf("%s, version %s\n\n", APP_NAME, VERSION);
 	printf("Options are:\n"
+		"  -c     cumulative totals over time\n"
 		"  -d     strip directory off the filenames\n"
 		"  -h     show this help\n"
 		"  -p PID collect stats for just process with pid PID\n"
@@ -425,10 +431,13 @@ int main(int argc, char **argv)
 	unsigned long count = 0, top = -1;
 
 	for (;;) {
-		int c = getopt(argc, argv, "hvdt:p:P");
+		int c = getopt(argc, argv, "hvdt:p:Pc");
 		if (c == -1)
 			break;
 		switch (c) {
+		case 'c':
+			opt_flags |= OPT_CUMULATIVE;
+			break;
 		case 'h':
 			show_usage();
 			exit(EXIT_SUCCESS);
