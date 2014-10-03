@@ -38,12 +38,16 @@
 #include <sys/time.h>
 
 #define APP_NAME		"fnotifystat"
+
 #define TABLE_SIZE		(1997)
+#define BUFFER_SIZE		(4096)
+
 #define OPT_VERBOSE		(0x00000001)
 #define OPT_DIRNAME_STRIP 	(0x00000002)
 #define OPT_PID			(0x00000004)
 #define OPT_SORT_BY_PID		(0x00000008)
 #define OPT_CUMULATIVE		(0x00000010)
+
 
 /* fnotify file activity stats */
 typedef struct file_stat {
@@ -72,13 +76,37 @@ static volatile bool stop_fnotifystat = false;	/* true -> stop fnotifystat */
 static pid_t opt_pid;				/* just watch files touched by a process */
 static pid_t my_pid;				/* pid of this programme */
 
+static void pr_error(const char *msg) __attribute__ ((noreturn));
+static void pr_nomem(const char *msg) __attribute__ ((noreturn));
+
+/*
+ *  pr_error()
+ *	print error message and exit fatally
+ */
+static void pr_error(const char *msg)
+{
+	fprintf(stderr, "Fatal error: %s: errno=%d (%s)\n",
+		msg, errno, strerror(errno));
+	exit(EXIT_FAILURE);
+}
+
+/*
+ *  pr_nomem()
+ *	print out of memory error and exit fatally
+ */
+static void pr_nomem(const char *msg)
+{
+	fprintf(stderr, "Fatal error: out of memory: %s\n", msg);
+	exit(EXIT_FAILURE);
+}
+
 /*
  *  get_pid_cmdline
  * 	get process's /proc/pid/cmdline
  */
 static char *get_pid_cmdline(const pid_t id)
 {
-	char buffer[4096];
+	char buffer[BUFFER_SIZE];
 	char *ptr;
 	int fd;
 	ssize_t ret;
@@ -89,10 +117,10 @@ static char *get_pid_cmdline(const pid_t id)
 		return strdup("<unknown>");
 
 	if ((ret = read(fd, buffer, sizeof(buffer))) <= 0) {
-		close(fd);
+		(void)close(fd);
 		return strdup("<unknown>");
 	}
-	close(fd);
+	(void)close(fd);
 
 	buffer[sizeof(buffer)-1] = '\0';
 	for (ptr = buffer; *ptr && (ptr < buffer + ret); ptr++) {
@@ -146,7 +174,7 @@ static unsigned long hash_pjw(const char *str, const pid_t pid)
 
 static proc_info_t *proc_info_get(const pid_t pid)
 {
-	unsigned long h = pid % TABLE_SIZE;
+	const unsigned long h = pid % TABLE_SIZE;
 	proc_info_t *pi = proc_infos[h];
 
 	while (pi) {
@@ -154,15 +182,13 @@ static proc_info_t *proc_info_get(const pid_t pid)
 			return pi;
 		pi = pi->next;
 	}
-	if ((pi = calloc(1, sizeof(*pi))) == NULL) {
-		fprintf(stderr, "calloc: out of memory\n");
-		exit(EXIT_FAILURE);
-	}
+	if ((pi = calloc(1, sizeof(*pi))) == NULL)
+		pr_nomem("allocating process information");
+
 	pi->pid = pid;
-	if ((pi->cmdline = get_pid_cmdline(pid)) == NULL) {
-		fprintf(stderr, "calloc: out of memory\n");
-		exit(EXIT_FAILURE);
-	}
+	if ((pi->cmdline = get_pid_cmdline(pid)) == NULL)
+		pr_nomem("allocating process command line");
+
 	pi->next = proc_infos[h];
 	proc_infos[h] = pi;
 
@@ -195,7 +221,7 @@ static void proc_info_free(void)
  */
 static file_stat_t *file_stat_get(const char *str, const pid_t pid)
 {
-	unsigned long h = hash_pjw(str, pid);
+	const unsigned long h = hash_pjw(str, pid);
 	file_stat_t *fs = file_stats[h];
 
 	while (fs) {
@@ -203,14 +229,12 @@ static file_stat_t *file_stat_get(const char *str, const pid_t pid)
 			return fs;
 		fs = fs->next;
 	}
-	if ((fs = calloc(1, sizeof(*fs))) == NULL) {
-		fprintf(stderr, "calloc: out of memory\n");
-		exit(EXIT_FAILURE);
-	}
+	if ((fs = calloc(1, sizeof(*fs))) == NULL)
+		pr_nomem("allocating file stats");
+
 	if ((fs->path = strdup(str)) == NULL) {
 		free(fs);
-		fprintf(stderr, "calloc: out of memory\n");
-		exit(EXIT_FAILURE);
+		pr_nomem("allocating file stats pathname");
 	}
 	fs->next = file_stats[h];
 	fs->pid = pid;
@@ -232,24 +256,17 @@ static int fnotify_event_init(void)
 	FILE* mounts;
 	struct mntent* mount;
 
-	if ((fan_fd = fanotify_init (0, 0)) < 0) {
-		fprintf(stderr, "Cannot initialize fanotify: %s.\n",
-			strerror(errno));
-		return -1;
-	}
+	if ((fan_fd = fanotify_init (0, 0)) < 0)
+		pr_error("cannot initialize fanotify");
 
 	ret = fanotify_mark(fan_fd, FAN_MARK_ADD | FAN_MARK_MOUNT,
 		FAN_ACCESS| FAN_MODIFY | FAN_OPEN | FAN_CLOSE |
 		FAN_ONDIR | FAN_EVENT_ON_CHILD, AT_FDCWD, "/");
-	if (ret < 0) {
-		fprintf(stderr, "Cannot add fanotify watch on /: %s.\n",
-			strerror(errno));
-	}
+	if (ret < 0)
+		pr_error("cannot add fnotify watch on /");
 
-	if ((mounts = setmntent("/proc/self/mounts", "r")) == NULL) {
-		fprintf(stderr, "Cannot get mount points.\n");
-		return -1;
-	}
+	if ((mounts = setmntent("/proc/self/mounts", "r")) == NULL)
+		pr_error("cannot get mount points from /proc/self/mounts");
 
 	while ((mount = getmntent (mounts)) != NULL) {
 		/*
@@ -366,9 +383,8 @@ static int fnotify_event_add(const struct fanotify_event_metadata *metadata)
 
  	filename = fnotify_get_filename(-1, metadata->fd);
 	if (filename == NULL) {
-		fprintf(stderr, "Out of memory: allocating fnotify filename");
-		close(metadata->fd);
-		return -1;
+		(void)close(metadata->fd);
+		pr_error("allocating fnotify filename");
 	}
 
 	time(&now);
@@ -401,7 +417,7 @@ static int fnotify_event_add(const struct fanotify_event_metadata *metadata)
 			(opt_flags & OPT_DIRNAME_STRIP) ?
 				basename(filename) : filename);
 	}
-	close(metadata->fd);
+	(void)close(metadata->fd);
 	free(filename);
 
 	return 0;
@@ -447,10 +463,8 @@ static void file_stat_dump(const double duration, const unsigned long top)
 		return;
 	
 	sorted = calloc(file_stats_size, sizeof(file_stat_t *));
-	if (sorted == NULL) {
-		fprintf(stderr, "calloc failed\n");	
-		exit(EXIT_FAILURE);
-	}
+	if (sorted == NULL)
+		pr_error("allocating file stats");
 
 	for (j = 0, i = 0; i < TABLE_SIZE; i++) {
 		file_stat_t *fs = file_stats[i];
@@ -593,27 +607,31 @@ int main(int argc, char **argv)
 
 	my_pid = getpid();
 
-	ret = posix_memalign(&buffer, 4096, 4096);
+	ret = posix_memalign(&buffer, BUFFER_SIZE, BUFFER_SIZE);
 	if (ret != 0 || buffer == NULL) {
 		fprintf(stderr,"cannot allocate 4K aligned buffer");
 		exit(EXIT_FAILURE);
 	}
 	fan_fd = fnotify_event_init();
 	if (fan_fd < 0) {
-		fprintf(stderr,"cannot init fnotify");
+		fprintf(stderr, "cannot init fnotify");
 		exit(EXIT_FAILURE);
 	}
 
 	signal(SIGINT, &handle_sigint);
 	while (!stop_fnotifystat && (forever || count--)) {
 		double duration;
-		gettimeofday(&tv1, NULL);
+		if (gettimeofday(&tv1, NULL) < 0)
+			pr_error("gettimeofday failed");
+
 		for (;;) {
 			fd_set rfds;
 			int ret;
 			double remaining;
 	
-			gettimeofday(&tv2, NULL);
+			if (gettimeofday(&tv2, NULL) < 0)
+				pr_error("gettimeofday failed");
+
 			remaining = duration_secs + timeval_double(&tv1) - timeval_double(&tv2);
 
 			if (remaining < 0.0)
@@ -630,12 +648,11 @@ int main(int argc, char **argv)
 					stop_fnotifystat = true;
 					break;
 				}
-				fprintf(stderr, "select error: %d\n", errno);
-				exit(EXIT_FAILURE);
+				pr_error("select failed");
 			}
 			if (ret == 0)
 				break;
-			if ((len = read(fan_fd, (void *)buffer, 4096)) > 0) {
+			if ((len = read(fan_fd, (void *)buffer, BUFFER_SIZE)) > 0) {
 				const struct fanotify_event_metadata *metadata;
 				metadata = (struct fanotify_event_metadata *)buffer;
 
@@ -646,12 +663,14 @@ int main(int argc, char **argv)
 				}
 			}
 		}
-		gettimeofday(&tv2, NULL);
+		if (gettimeofday(&tv2, NULL) < 0)
+			pr_error("gettimeofday failed");
+
 		duration = timeval_double(&tv2) - timeval_double(&tv1);
 		file_stat_dump(duration, top);
 	}
 
-	close(fan_fd);
+	(void)close(fan_fd);
 	free(buffer);
 	proc_info_free();
 
