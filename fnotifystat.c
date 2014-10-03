@@ -57,11 +57,51 @@ typedef struct file_stat {
 	struct file_stat *next;	/* Next item in hash list */
 } file_stat_t;
 
-static file_stat_t *file_stats[TABLE_SIZE];	/* hash of file stats */
+/* process info */
+typedef struct proc_info {
+	char 		*cmdline; /* cmdline of process */
+	pid_t		pid;	/* pid of process */
+	struct proc_info *next;	/* Next item in hash list */
+} proc_info_t;
+
+static file_stat_t *file_stats[TABLE_SIZE];	/* hash table of file stats */
+static proc_info_t *proc_infos[TABLE_SIZE];	/* hash table of proc infos */
 static size_t file_stats_size;			/* number of items in hash table */
 static unsigned int opt_flags;			/* option flags */
 static volatile bool stop_fnotifystat = false;	/* true -> stop fnotifystat */
 static pid_t opt_pid;				/* just watch files touched by a process */
+static pid_t my_pid;				/* pid of this programme */
+
+/*
+ *  get_pid_cmdline
+ * 	get process's /proc/pid/cmdline
+ */
+static char *get_pid_cmdline(const pid_t id)
+{
+	char buffer[4096];
+	char *ptr;
+	int fd;
+	ssize_t ret;
+
+	snprintf(buffer, sizeof(buffer), "/proc/%d/cmdline", id);
+
+	if ((fd = open(buffer, O_RDONLY)) < 0)
+		return strdup("<unknown>");
+
+	if ((ret = read(fd, buffer, sizeof(buffer))) <= 0) {
+		close(fd);
+		return strdup("<unknown>");
+	}
+	close(fd);
+
+	buffer[sizeof(buffer)-1] = '\0';
+	for (ptr = buffer; *ptr && (ptr < buffer + ret); ptr++) {
+		if (*ptr == ' ')
+			*ptr = '\0';
+	}
+
+	return strdup(basename(buffer));
+}
 
 /*
  *  handle_sigint()
@@ -102,6 +142,50 @@ static unsigned long hash_pjw(const char *str, const pid_t pid)
 	}
 
   	return h % TABLE_SIZE;
+}
+
+static proc_info_t *proc_info_get(const pid_t pid)
+{
+	unsigned long h = pid % TABLE_SIZE;
+	proc_info_t *pi = proc_infos[h];
+
+	while (pi) {
+		if (pi->pid == pid)
+			return pi;
+		pi = pi->next;
+	}
+	if ((pi = calloc(1, sizeof(*pi))) == NULL) {
+		fprintf(stderr, "calloc: out of memory\n");
+		exit(EXIT_FAILURE);
+	}
+	pi->pid = pid;
+	if ((pi->cmdline = get_pid_cmdline(pid)) == NULL) {
+		fprintf(stderr, "calloc: out of memory\n");
+		exit(EXIT_FAILURE);
+	}
+	pi->next = proc_infos[h];
+	proc_infos[h] = pi;
+
+	return pi;
+}
+
+static void proc_info_free(void)
+{
+	int i;
+
+	for (i = 0; i < TABLE_SIZE; i++) {
+		proc_info_t *pi = proc_infos[i];
+
+		while (pi) {
+			proc_info_t *next = pi->next;
+
+			free(pi->cmdline);
+			free(pi);
+
+			pi = next;
+		}
+		proc_infos[i] = NULL;
+	}
 }
 
 /*
@@ -275,6 +359,8 @@ static int fnotify_event_add(const struct fanotify_event_metadata *metadata)
 
 	if ((metadata->fd == FAN_NOFD) && (metadata->fd < 0))
 		return 0;
+	if (metadata->pid == my_pid)
+		return 0;
 	if ((opt_flags & OPT_PID) && (metadata->pid != opt_pid))
 		return 0;
 
@@ -307,10 +393,11 @@ static int fnotify_event_add(const struct fanotify_event_metadata *metadata)
 	}
 
 	if (opt_flags & OPT_VERBOSE) {
-		printf("%2.2d/%2.2d/%-2.2d %2.2d:%2.2d:%2.2d %5d %4.4s %s\n",
+		printf("%2.2d/%2.2d/%-2.2d %2.2d:%2.2d:%2.2d (%4.4s) %5d %s %s\n",
 			tm.tm_mday, tm.tm_mon + 1, (tm.tm_year+1900) % 100,
 			tm.tm_hour, tm.tm_min, tm.tm_sec,
-			metadata->pid, fnotify_mask_to_str(metadata->mask),
+			fnotify_mask_to_str(metadata->mask),
+			metadata->pid, proc_info_get(metadata->pid)->cmdline,
 			(opt_flags & OPT_DIRNAME_STRIP) ?
 				basename(filename) : filename);
 	}
@@ -377,16 +464,17 @@ static void file_stat_dump(const double duration, const unsigned long top)
 	
 	qsort(sorted, file_stats_size, sizeof(file_stat_t *), file_stat_cmp);
 
-	printf(" Total   Open  Close   Read  Write  PID  Pathname\n");
+	printf(" Total   Open  Close   Read  Write  PID  Process         Pathname\n");
 	for (j = 0; j < file_stats_size; j++) {
 		if (top && j <= top) {
-			printf("%6.2f %6.2f %6.2f %6.2f %6.2f %5d %s\n",
+			printf("%6.2f %6.2f %6.2f %6.2f %6.2f %5d %-15.15s %s\n",
 				(double)sorted[j]->total / duration,
 				(double)sorted[j]->open / duration,
 				(double)sorted[j]->close / duration,
 				(double)sorted[j]->read / duration,
 				(double)sorted[j]->write / duration,
 				sorted[j]->pid,
+				proc_info_get(sorted[j]->pid)->cmdline,
 				(opt_flags & OPT_DIRNAME_STRIP) ?
 					basename(sorted[j]->path) : sorted[j]->path);
 		}
@@ -502,6 +590,8 @@ int main(int argc, char **argv)
 		exit(EXIT_FAILURE);
 	}
 
+	my_pid = getpid();
+
 	ret = posix_memalign(&buffer, 4096, 4096);
 	if (ret != 0 || buffer == NULL) {
 		fprintf(stderr,"cannot allocate 4K aligned buffer");
@@ -562,6 +652,7 @@ int main(int argc, char **argv)
 
 	close(fan_fd);
 	free(buffer);
+	proc_info_free();
 
 	exit(EXIT_SUCCESS);
 }
