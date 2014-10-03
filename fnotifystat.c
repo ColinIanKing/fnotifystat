@@ -402,6 +402,7 @@ static int fnotify_event_add(const struct fanotify_event_metadata *metadata)
 				basename(filename) : filename);
 	}
 	close(metadata->fd);
+	free(filename);
 
 	return 0;
 }
