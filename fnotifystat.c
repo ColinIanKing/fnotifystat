@@ -348,17 +348,12 @@ static char *fnotify_get_filename(const pid_t pid, const int fd)
 static const char *fnotify_mask_to_str(const int mask)
 {
 	static char modes[5];
-	int i = 0;
 
-	if (mask & FAN_OPEN)
-		modes[i++] = 'O';
-	if (mask & (FAN_CLOSE_WRITE | FAN_CLOSE_NOWRITE))
-		modes[i++] = 'C';
-	if (mask & FAN_ACCESS)
-		modes[i++] = 'R';
-	if (mask & (FAN_MODIFY | FAN_CLOSE_WRITE))
-		modes[i++] = 'W';
-	modes[i] = '\0';
+	modes[0] = (mask & FAN_OPEN) ? 'O' : '-';
+	modes[1] = (mask & (FAN_CLOSE_WRITE | FAN_CLOSE_NOWRITE)) ? 'C' : '-';
+	modes[2] = (mask & FAN_ACCESS) ? 'R' : '-';
+	modes[3] = (mask & (FAN_MODIFY | FAN_CLOSE_WRITE)) ? 'W' : '-';
+	modes[4] = '\0';
 
 	return modes;
 }
