@@ -1,3 +1,13 @@
+fnotifystat (0.01.03-1) unstable; urgency=medium
+
+  * Bump version
+  * Add -T timestamp option
+  * Minor clean up
+  * Prettify modes
+  * Improve error message info, minor tidy ups in code
+
+ -- Colin King <colin.king@canonical.com>  Fri, 3 Oct 2014 15:20:00 +0000
+
 fnotifystat (0.01.02-1) unstable; urgency=medium
 
   * Makefile: bump version
