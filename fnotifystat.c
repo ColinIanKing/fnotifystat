@@ -41,6 +41,7 @@
 #define TABLE_SIZE		(1997)
 #define OPT_VERBOSE		(0x00000001)
 #define OPT_DIRNAME_STRIP 	(0x00000002)
+#define OPT_PID			(0x00000004)
 
 /* fnotify file activity stats */
 typedef struct file_stat {
@@ -58,6 +59,7 @@ static file_stat_t *file_stats[TABLE_SIZE];	/* hash of file stats */
 static size_t file_stats_size;			/* number of items in hash table */
 static unsigned int opt_flags;			/* option flags */
 static volatile bool stop_fnotifystat = false;	/* true -> stop fnotifystat */
+static pid_t opt_pid;				/* just watch files touched by a process */
 
 /*
  *  handle_sigint()
@@ -271,6 +273,8 @@ static int fnotify_event_add(const struct fanotify_event_metadata *metadata)
 
 	if ((metadata->fd == FAN_NOFD) && (metadata->fd < 0))
 		return 0;
+	if ((opt_flags & OPT_PID) && (metadata->pid != opt_pid))
+		return 0;
 
  	filename = fnotify_get_filename(-1, metadata->fd);
 	if (filename == NULL) {
@@ -410,7 +414,7 @@ int main(int argc, char **argv)
 	unsigned long count = 0, top = -1;
 
 	for (;;) {
-		int c = getopt(argc, argv, "hvdt:");
+		int c = getopt(argc, argv, "hvdt:p:");
 		if (c == -1)
 			break;
 		switch (c) {
@@ -434,6 +438,16 @@ int main(int argc, char **argv)
 				fprintf(stderr, "Value for -t option must be 1 or more.\n");
 				exit(EXIT_FAILURE);
 			}
+			break;
+		case 'p':
+			errno = 0;
+			opt_pid = (pid_t)strtol(optarg, NULL, 10);
+			if (errno) {
+				fprintf(stderr, "Invalid value for -t option.\n");
+				exit(EXIT_FAILURE);
+			}
+			opt_flags |= OPT_PID;
+			break;
 		default:
 			show_usage();
 			exit(EXIT_FAILURE);
