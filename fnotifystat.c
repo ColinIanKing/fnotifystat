@@ -519,9 +519,8 @@ void show_usage(void)
 
 int main(int argc, char **argv)
 {
-	int fan_fd;
+	int fan_fd, ret;
 	ssize_t len;
-	int ret;
 	void *buffer;
 	struct timeval tv1, tv2;
 	float duration_secs = 1.0;
@@ -628,7 +627,6 @@ int main(int argc, char **argv)
 				pr_error("gettimeofday failed");
 
 			remaining = duration_secs + timeval_double(&tv1) - timeval_double(&tv2);
-
 			if (remaining < 0.0)
 				break;
 
