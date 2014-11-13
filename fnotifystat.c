@@ -39,15 +39,15 @@
 
 #define APP_NAME		"fnotifystat"
 
-#define TABLE_SIZE		(1997)
+#define TABLE_SIZE		(17627)		/* Best if prime */
 #define BUFFER_SIZE		(4096)
 
-#define OPT_VERBOSE		(0x00000001)
-#define OPT_DIRNAME_STRIP 	(0x00000002)
-#define OPT_PID			(0x00000004)
-#define OPT_SORT_BY_PID		(0x00000008)
-#define OPT_CUMULATIVE		(0x00000010)
-#define OPT_TIMESTAMP		(0x00000020)
+#define OPT_VERBOSE		(0x00000001)	/* Verbose mode */
+#define OPT_DIRNAME_STRIP 	(0x00000002)	/* Remove leading path */
+#define OPT_PID			(0x00000004)	/* Select by PID */
+#define OPT_SORT_BY_PID		(0x00000008)	/* Sort by PID */
+#define OPT_CUMULATIVE		(0x00000010)	/* Gather cumulative stats */
+#define OPT_TIMESTAMP		(0x00000020)	/* Show timestamp */
 
 
 /* fnotify file activity stats */
@@ -162,6 +162,7 @@ static unsigned long hash_pjw(const char *str, const pid_t pid)
 
 	while (*str) {
 		unsigned long g;
+
 		h = (h << 4) + (*str);
 		if (0 != (g = h & 0xf0000000)) {
 			h = h ^ (g >> 24);
@@ -252,33 +253,40 @@ static file_stat_t *file_stat_get(const char *str, const pid_t pid)
  */
 static int fnotify_event_init(void)
 {
-	int fan_fd;
-	int ret;
+	int fan_fd, ret, count = 0;
 	FILE* mounts;
 	struct mntent* mount;
 
 	if ((fan_fd = fanotify_init(0, 0)) < 0)
 		pr_error("cannot initialize fanotify");
 
-	ret = fanotify_mark(fan_fd, FAN_MARK_ADD | FAN_MARK_MOUNT,
-		FAN_ACCESS| FAN_MODIFY | FAN_OPEN | FAN_CLOSE |
-		FAN_ONDIR | FAN_EVENT_ON_CHILD, AT_FDCWD, "/");
-	if (ret < 0)
-		pr_error("cannot add fnotify watch on /");
+	if ((mounts = setmntent("/proc/self/mounts", "r")) == NULL) {
+		(void)close(fan_fd);
+		pr_error("setmntent cannot get mount points from /proc/self/mounts");
+	}
 
-	if ((mounts = setmntent("/proc/self/mounts", "r")) == NULL)
-		pr_error("cannot get mount points from /proc/self/mounts");
-
-	while ((mount = getmntent (mounts)) != NULL) {
+	/*
+	 *  Gather all mounted file systems and monitor them
+	 */
+	while ((mount = getmntent(mounts)) != NULL) {
 		ret = fanotify_mark(fan_fd, FAN_MARK_ADD | FAN_MARK_MOUNT,
 			FAN_ACCESS| FAN_MODIFY | FAN_OPEN | FAN_CLOSE |
 			FAN_ONDIR | FAN_EVENT_ON_CHILD, AT_FDCWD,
 			mount->mnt_dir);
-		if ((ret < 0) && (errno != ENOENT)) {
-			continue;
-		}
+		if (ret >= 0)
+			count++;
 	}
-	endmntent (mounts);
+	if (endmntent(mounts) < 0) {
+		(void)close(fan_fd);
+		pr_error("endmntent failed");
+	}
+
+	/* This really should not happen, / is always mounted */
+	if (!count) {
+		fprintf(stderr, "no mount points could be monitored\n");
+		(void)close(fan_fd);
+		exit(EXIT_FAILURE);
+	}
 
 	return fan_fd;
 }
