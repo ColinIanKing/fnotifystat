@@ -1,3 +1,11 @@
+fnotifystat (0.01.05-1) unstable; urgency=medium
+
+  * Makefile: bump version again
+  * Update Debian/control to 3.9.6 standards and debhelper version
+  * Move man page to section 8
+
+ -- Colin King <colin.king@canonical.com>  Thu, 13 Nov 2014 23:32:00 +0000
+
 fnotifystat (0.01.04-1) unstable; urgency=medium
 
   * Makefile: bump version and add copyright boilerplate
