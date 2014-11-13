@@ -257,7 +257,7 @@ static int fnotify_event_init(void)
 	FILE* mounts;
 	struct mntent* mount;
 
-	if ((fan_fd = fanotify_init (0, 0)) < 0)
+	if ((fan_fd = fanotify_init(0, 0)) < 0)
 		pr_error("cannot initialize fanotify");
 
 	ret = fanotify_mark(fan_fd, FAN_MARK_ADD | FAN_MARK_MOUNT,
