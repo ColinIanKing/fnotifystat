@@ -1,3 +1,13 @@
+fnotifystat (0.01.04-1) unstable; urgency=medium
+
+  * Makefile: bump version and add copyright boilerplate
+  * Fix minor issues in manpage
+  * Add more comments and make init more robust
+  * Remove extraneous white space
+  * Remove redundant code
+
+ -- Colin King <colin.king@canonical.com>  Thu, 13 Nov 2014 23:21:00 +0000
+
 fnotifystat (0.01.03-1) unstable; urgency=medium
 
   * Bump version
