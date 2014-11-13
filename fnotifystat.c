@@ -270,11 +270,6 @@ static int fnotify_event_init(void)
 		pr_error("cannot get mount points from /proc/self/mounts");
 
 	while ((mount = getmntent (mounts)) != NULL) {
-		/*
-		if (access (mount->mnt_fsname, F_OK) != 0)
-			continue;
-		*/
-
 		ret = fanotify_mark(fan_fd, FAN_MARK_ADD | FAN_MARK_MOUNT,
 			FAN_ACCESS| FAN_MODIFY | FAN_OPEN | FAN_CLOSE |
 			FAN_ONDIR | FAN_EVENT_ON_CHILD, AT_FDCWD,
@@ -284,14 +279,6 @@ static int fnotify_event_init(void)
 		}
 	}
 	endmntent (mounts);
-
-	/* Track /sys/power ops for wakealarm analysis */
-	(void)fanotify_mark(fan_fd, FAN_MARK_ADD,
-		FAN_ACCESS | FAN_MODIFY, AT_FDCWD,
-		"/sys/power/wake_lock");
-	(void)fanotify_mark(fan_fd, FAN_MARK_ADD,
-		FAN_ACCESS | FAN_MODIFY, AT_FDCWD,
-		"/sys/power/wake_unlock");
 
 	return fan_fd;
 }
