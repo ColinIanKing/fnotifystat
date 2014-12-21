@@ -77,6 +77,71 @@ static volatile bool stop_fnotifystat = false;	/* true -> stop fnotifystat */
 static pid_t opt_pid;				/* just watch files touched by a process */
 static pid_t my_pid;				/* pid of this programme */
 
+/*
+ *  Attempt to catch a range of signals so
+ *  we can clean
+ */
+static const int signals[] = {
+	/* POSIX.1-1990 */
+#ifdef SIGHUP
+	SIGHUP,
+#endif
+#ifdef SIGINT
+	SIGINT,
+#endif
+#ifdef SIGQUIT
+	SIGQUIT,
+#endif
+#ifdef SIGILL
+	SIGILL,
+#endif
+#ifdef SIGABRT
+	SIGABRT,
+#endif
+#ifdef SIGFPE
+	SIGFPE,
+#endif
+#ifdef SIGSEGV
+	SIGSEGV,
+#endif
+#ifdef SIGTERM
+	SIGTERM,
+#endif
+#ifdef SIGUSR1
+	SIGUSR1,
+#endif
+#ifdef SIGUSR2
+	SIGUSR2,
+	/* POSIX.1-2001 */
+#endif
+#ifdef SIGBUS
+	SIGBUS,
+#endif
+#ifdef SIGXCPU
+	SIGXCPU,
+#endif
+#ifdef SIGXFSZ
+	SIGXFSZ,
+#endif
+	/* Linux various */
+#ifdef SIGIOT
+	SIGIOT,
+#endif
+#ifdef SIGSTKFLT
+	SIGSTKFLT,
+#endif
+#ifdef SIGPWR
+	SIGPWR,
+#endif
+#ifdef SIGINFO
+	SIGINFO,
+#endif
+#ifdef SIGVTALRM
+	SIGVTALRM,
+#endif
+	-1,
+};
+
 static void pr_error(const char *msg) __attribute__ ((noreturn));
 static void pr_nomem(const char *msg) __attribute__ ((noreturn));
 
@@ -149,10 +214,10 @@ static char *get_pid_cmdline(const pid_t id)
 }
 
 /*
- *  handle_sigint()
- *      catch SIGINT and flag a stop
+ *  handle_sig()
+ *      catch signals and flag a stop
  */
-static void handle_sigint(int dummy)
+static void handle_sig(int dummy)
 {
 	(void)dummy;	/* Stop unused parameter warning with -Wextra */
 
@@ -541,13 +606,14 @@ void show_usage(void)
 
 int main(int argc, char **argv)
 {
-	int fan_fd, ret;
-	ssize_t len;
+	unsigned long count = 0, top = -1;
 	void *buffer;
-	struct timeval tv1, tv2;
+	ssize_t len;
+	int fan_fd, ret, i;
 	float duration_secs = 1.0;
 	bool forever = true;
-	unsigned long count = 0, top = -1;
+	struct sigaction new_action;
+	struct timeval tv1, tv2;
 
 	for (;;) {
 		int c = getopt(argc, argv, "hvdt:p:PcT");
@@ -624,6 +690,19 @@ int main(int argc, char **argv)
 		exit(EXIT_FAILURE);
 	}
 
+	memset(&new_action, 0, sizeof(new_action));
+	for (i = 0; signals[i] != -1; i++) {
+		new_action.sa_handler = handle_sig;
+		sigemptyset(&new_action.sa_mask);
+		new_action.sa_flags = 0;
+
+		if (sigaction(signals[i], &new_action, NULL) < 0) {
+			fprintf(stderr, "sigaction failed: errno=%d (%s)\n",
+				errno, strerror(errno));
+			exit(EXIT_FAILURE);
+		}
+	}
+
 	my_pid = getpid();
 
 	ret = posix_memalign(&buffer, BUFFER_SIZE, BUFFER_SIZE);
@@ -637,7 +716,6 @@ int main(int argc, char **argv)
 		exit(EXIT_FAILURE);
 	}
 
-	signal(SIGINT, &handle_sigint);
 	while (!stop_fnotifystat && (forever || count--)) {
 		double duration;
 		if (gettimeofday(&tv1, NULL) < 0)
