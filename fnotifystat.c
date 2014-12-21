@@ -81,6 +81,22 @@ static void pr_error(const char *msg) __attribute__ ((noreturn));
 static void pr_nomem(const char *msg) __attribute__ ((noreturn));
 
 /*
+ *  get_tm()
+ *	fetch tm, will set fields to zero if can't get
+ */
+static void get_tm(struct tm *tm)
+{
+	time_t now = time(NULL);
+
+	if (now == ((time_t) -1)) {
+		memset(tm, 0, sizeof(struct tm));
+	} else {
+		(void)localtime_r(&now, tm);
+	}
+}
+
+
+/*
  *  pr_error()
  *	print error message and exit fatally
  */
@@ -361,7 +377,6 @@ static const char *fnotify_mask_to_str(const int mask)
 static int fnotify_event_add(const struct fanotify_event_metadata *metadata)
 {
 	char 	*filename;
-	time_t now;
 	struct tm tm;
 	file_stat_t *fs;
 
@@ -378,8 +393,7 @@ static int fnotify_event_add(const struct fanotify_event_metadata *metadata)
 		pr_error("allocating fnotify filename");
 	}
 
-	time(&now);
-	localtime_r(&now, &tm);
+	get_tm(&tm);
 
 	fs = file_stat_get(filename, metadata->pid);
 	if (metadata->mask & FAN_OPEN) {
@@ -472,12 +486,9 @@ static void file_stat_dump(const double duration, const unsigned long top)
 	qsort(sorted, file_stats_size, sizeof(file_stat_t *), file_stat_cmp);
 
 	if (opt_flags & OPT_TIMESTAMP) {
-		time_t now;
 		struct tm tm;
 
-		time(&now);
-		localtime_r(&now, &tm);
-
+		get_tm(&tm);
 		snprintf(ts, sizeof(ts), " [%2.2d/%2.2d/%-2.2d %2.2d:%2.2d:%2.2d]\n",
 			tm.tm_mday, tm.tm_mon + 1, (tm.tm_year+1900) % 100,
 			tm.tm_hour, tm.tm_min, tm.tm_sec);
