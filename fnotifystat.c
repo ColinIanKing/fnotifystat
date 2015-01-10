@@ -49,6 +49,8 @@
 #define OPT_CUMULATIVE		(0x00000010)	/* Gather cumulative stats */
 #define OPT_TIMESTAMP		(0x00000020)	/* Show timestamp */
 
+#define PROC_CACHE_LIFE		(120)		/* Refresh cached pid info timeout */
+
 
 /* fnotify file activity stats */
 typedef struct file_stat {
@@ -66,6 +68,7 @@ typedef struct file_stat {
 typedef struct proc_info {
 	char 		*cmdline;		/* cmdline of process */
 	struct proc_info *next;			/* Next item in hash list */
+	double		whence;			/* When data acquired */
 	pid_t		pid;			/* pid of process */
 } proc_info_t;
 
@@ -146,6 +149,27 @@ static const int signals[] = {
 
 static void pr_error(const char *msg) __attribute__ ((noreturn));
 static void pr_nomem(const char *msg) __attribute__ ((noreturn));
+
+
+/*
+ *  timeval_to_double()
+ *	convert timeval to seconds as a double
+ */
+static double timeval_to_double(void)
+{
+	struct timeval tv;
+
+redo:
+	errno = 0;			/* clear to be safe */
+	if (gettimeofday(&tv, NULL) < 0) {
+		if (errno == EINTR)	/* should not occur */
+			goto redo;
+
+		/* Silently fail */
+		return -1.0;
+	}
+	return (double)tv.tv_sec + ((double)tv.tv_usec / 1000000.0);
+}
 
 /*
  *  get_tm()
@@ -266,20 +290,28 @@ static proc_info_t *proc_info_get(const pid_t pid)
 	proc_info_t *pi = proc_infos[h];
 
 	while (pi) {
-		/* Probably need a cache refresh for pid re-used here */
-		if (pi->pid == pid)
-			return pi;
+		if (pi->pid == pid) {
+			double now = timeval_to_double();
+			if (now < pi->whence + PROC_CACHE_LIFE)
+				return pi;
+
+			/* Deemed "stale", so refresh stats */
+			free(pi->cmdline);
+			goto update;
+		}
 		pi = pi->next;
 	}
 	if ((pi = calloc(1, sizeof(*pi))) == NULL)
 		pr_nomem("allocating process information");
 
-	pi->pid = pid;
-	if ((pi->cmdline = get_pid_cmdline(pid)) == NULL)
-		pr_nomem("allocating process command line");
-
 	pi->next = proc_infos[h];
 	proc_infos[h] = pi;
+	pi->pid = pid;
+
+update:
+	if ((pi->cmdline = get_pid_cmdline(pid)) == NULL)
+		pr_nomem("allocating process command line");
+	pi->whence = timeval_to_double();
 
 	return pi;
 }
@@ -658,6 +690,7 @@ static int parse_pid_list(char *arg)
 		}
 		p->pid = pid;
 		p->cmdline = name;
+		p->whence = 0.0;	/* Not used */
 		p->next = proc_list;
 		proc_list = p;
 	}
