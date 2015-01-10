@@ -37,7 +37,6 @@
 #include <sys/stat.h>
 #include <sys/time.h>
 
-#define APP_NAME		"fnotifystat"
 
 #define TABLE_SIZE		(17627)		/* Best if prime */
 #define BUFFER_SIZE		(4096)
@@ -52,23 +51,24 @@
 
 /* fnotify file activity stats */
 typedef struct file_stat {
-	char 		*path;	/* Pathname of file */
-	pid_t		pid;	/* PID of process touching file */
-	uint64_t	open;	/* Count of opens */
-	uint64_t	close;	/* Count of closes */
-	uint64_t	read;	/* Count of reads */
-	uint64_t	write;	/* Count of writes */
-	uint64_t	total;	/* Total count */
-	struct file_stat *next;	/* Next item in hash list */
+	uint64_t	open;			/* Count of opens */
+	uint64_t	close;			/* Count of closes */
+	uint64_t	read;			/* Count of reads */
+	uint64_t	write;			/* Count of writes */
+	uint64_t	total;			/* Total count */
+	char 		*path;			/* Pathname of file */
+	struct file_stat *next;			/* Next item in hash list */
+	pid_t		pid;			/* PID of process touching file */
 } file_stat_t;
 
 /* process info */
 typedef struct proc_info {
-	char 		*cmdline; /* cmdline of process */
-	pid_t		pid;	/* pid of process */
-	struct proc_info *next;	/* Next item in hash list */
+	char 		*cmdline;		/* cmdline of process */
+	struct proc_info *next;			/* Next item in hash list */
+	pid_t		pid;			/* pid of process */
 } proc_info_t;
 
+static const char *app_name = "fnotifystat";	/* name of this tool */
 static file_stat_t *file_stats[TABLE_SIZE];	/* hash table of file stats */
 static proc_info_t *proc_infos[TABLE_SIZE];	/* hash table of proc infos */
 static size_t file_stats_size;			/* number of items in hash table */
@@ -159,7 +159,6 @@ static void get_tm(struct tm *tm)
 		(void)localtime_r(&now, tm);
 	}
 }
-
 
 /*
  *  pr_error()
@@ -255,6 +254,10 @@ static unsigned long hash_pjw(const char *str, const pid_t pid)
   	return h % TABLE_SIZE;
 }
 
+/*
+ *  proc_info_get()
+ *	get info about a specific process
+ */
 static proc_info_t *proc_info_get(const pid_t pid)
 {
 	const unsigned long h = pid % TABLE_SIZE;
@@ -278,6 +281,10 @@ static proc_info_t *proc_info_get(const pid_t pid)
 	return pi;
 }
 
+/*
+ *  proc_info_free()
+ *	free process info
+ */
 static void proc_info_free(void)
 {
 	int i;
@@ -592,7 +599,7 @@ static void file_stat_dump(const double duration, const unsigned long top)
  */
 void show_usage(void)
 {
-	printf("%s, version %s\n\n", APP_NAME, VERSION);
+	printf("%s, version %s\n\n", app_name, VERSION);
 	printf("Options are:\n"
 		"  -c     cumulative totals over time\n"
 		"  -d     strip directory off the filenames\n"
@@ -686,7 +693,7 @@ int main(int argc, char **argv)
 	}
 
 	if ((getuid() != 0) || (geteuid() != 0)) {
-		fprintf(stderr, "this program requires root privileges to run.\n");
+		fprintf(stderr, "%s requires root privileges to run.\n", app_name);
 		exit(EXIT_FAILURE);
 	}
 
