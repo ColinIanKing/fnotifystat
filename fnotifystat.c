@@ -167,6 +167,16 @@ static const scale_t time_scales[] = {
 	{ 'y',  365 * 24 * 3600 },
 };
 
+/*
+ *  handle_siginfo()
+ *      catch SIGUSR1, toggle verbose mode
+ */
+static void handle_sigusr1(int dummy)
+{
+	(void)dummy;
+
+	opt_flags ^= OPT_VERBOSE;
+}
 
 /*
  *  get_double()
@@ -932,7 +942,7 @@ int main(int argc, char **argv)
 
 	memset(&new_action, 0, sizeof(new_action));
 	for (i = 0; signals[i] != -1; i++) {
-		new_action.sa_handler = handle_sig;
+		new_action.sa_handler = signals[i] == SIGUSR1 ? handle_sigusr1 : handle_sig;
 		sigemptyset(&new_action.sa_mask);
 		new_action.sa_flags = 0;
 
