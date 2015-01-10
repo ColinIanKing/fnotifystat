@@ -73,6 +73,12 @@ typedef struct proc_info {
 	pid_t		pid;			/* pid of process */
 } proc_info_t;
 
+/* scaling factor */
+typedef struct {
+	const char ch;				/* Scaling suffix */
+	const uint64_t scale;			/* Amount to scale by */
+} scale_t;
+
 static const char *app_name = "fnotifystat";	/* name of this tool */
 static file_stat_t *file_stats[TABLE_SIZE];	/* hash table of file stats */
 static proc_info_t *proc_infos[TABLE_SIZE];	/* hash table of proc infos */
@@ -150,6 +156,79 @@ static const int signals[] = {
 
 static void pr_error(const char *msg) __attribute__ ((noreturn));
 static void pr_nomem(const char *msg) __attribute__ ((noreturn));
+
+static const scale_t time_scales[] = {
+	{ 's',  1 },
+	{ 'm',  60 },
+	{ 'h',  3600 },
+	{ 'd',  24 * 3600 },
+	{ 'w',  7 * 24 * 3600 },
+	{ 'y',  365 * 24 * 3600 },
+};
+
+
+/*
+ *  get_double()
+ *	get a double value
+ */
+static double get_double(const char *const str, size_t *const len)
+{
+	double val;
+	*len = strlen(str);
+
+	errno = 0;
+	val = strtod(str, NULL);
+	if (errno) {
+		fprintf(stderr, "Invalid value %s.\n", str);
+		exit(EXIT_FAILURE);
+	}
+	if (*len == 0) {
+		fprintf(stderr, "Value %s is an invalid size.\n", str);
+		exit(EXIT_FAILURE);
+	}
+	return val;
+}
+
+/*
+ *  get_double_scale()
+ *	get a value and scale it by the given scale factor
+ */
+static double get_double_scale(
+	const char *const str,
+	const scale_t scales[],
+	const char *const msg)
+{
+	double val;
+	size_t len = strlen(str);
+	int i;
+	char ch;
+
+	val = get_double(str, &len);
+	len--;
+	ch = str[len];
+
+	if (val < 0.0) {
+		printf("Value %s cannot be negative\n", str);
+		exit(EXIT_FAILURE);
+	}
+
+	if (isdigit(ch) || ch == '.')
+		return val;
+
+	ch = tolower(ch);
+	for (i = 0; scales[i].ch; i++) {
+		if (ch == scales[i].ch)
+			return val * scales[i].scale;
+	}
+
+	printf("Illegal %s specifier %c\n", msg, str[len]);
+	exit(EXIT_FAILURE);
+}
+
+static inline double get_seconds(const char *const str)
+{
+	return get_double_scale(str, time_scales, "time");
+}
 
 static char *count_to_str(
 	const double val,
@@ -805,7 +884,7 @@ int main(int argc, char **argv)
 		}
 	}
 	if (optind < argc) {
-		duration_secs = atof(argv[optind++]);
+		duration_secs = get_seconds(argv[optind++]);
 		if (duration_secs < 0.5) {
 			fprintf(stderr, "Duration must be 0.5 or more.\n");
 			exit(EXIT_FAILURE);

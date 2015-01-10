@@ -26,6 +26,12 @@ fnotifystat \- a tool to show file system activity
 
 .SH DESCRIPTION
 fnotifystat is a program that dumps the file system activity in a given period of time.
+.br
+
+Statistics are output every 'delay' seconds. One can use the 'm' (minutes), 'h' (hours), 'd' (days), 'w' (weeks) or 'y' (years) suffix to specify large delay intervals. By default the delay 1 seconds.
+
+Statistics are ouput 'count' many times before exiting. If count is not specified then
+fnotifystat will run until it is stopped.
 
 .SH OPTIONS
 fnotifystat options are as follow:
@@ -57,7 +63,19 @@ only display the top busiest N files.
 show timestamp
 .TP
 .B \-v
-verbose mode, dump all file activity.
+verbose mode, dump all file activity. This will display the following file access information:
+.TS
+left;
+l.
+Date (in DD/MM/YY format)
+Time (in HH:MM:SS format)
+Access type, O=Open, C=Close, R=Read, W=Write
+Process ID
+Process Name
+Name of accessed file
+.br
+Note that the names of deleted filenames cannot be determined and are flagged by the "(deleted)" tag.
+.TE
 .SH EXAMPLES
 .LP
 Show file activity every second until stopped.
@@ -78,6 +96,11 @@ sudo fnotifystat 10 6
 Show file activity of thunderbird and process ID 1827.
 .RS 8
 sudo fnotifystat \-p thunderbird,1827
+.RE
+.LP
+Show top 20 active activity files over a single period of 5 minutes.
+.RS 8
+./fnotifystat  -d -c 60 1
 .RE
 .SH AUTHOR
 fnotifystat was written by Colin King <colin.king@canonical.com>
