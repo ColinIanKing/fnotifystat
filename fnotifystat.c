@@ -27,6 +27,7 @@
 #include <stdbool.h>
 #include <unistd.h>
 #include <limits.h>
+#include <ctype.h>
 #include <errno.h>
 #include <mntent.h>
 #include <time.h>
@@ -71,11 +72,12 @@ typedef struct proc_info {
 static const char *app_name = "fnotifystat";	/* name of this tool */
 static file_stat_t *file_stats[TABLE_SIZE];	/* hash table of file stats */
 static proc_info_t *proc_infos[TABLE_SIZE];	/* hash table of proc infos */
+static proc_info_t *proc_list;			/* processes to monitor */
 static size_t file_stats_size;			/* number of items in hash table */
 static unsigned int opt_flags;			/* option flags */
 static volatile bool stop_fnotifystat = false;	/* true -> stop fnotifystat */
-static pid_t opt_pid;				/* just watch files touched by a process */
 static pid_t my_pid;				/* pid of this programme */
+static bool named_procs = false;
 
 /*
  *  Attempt to catch a range of signals so
@@ -264,6 +266,7 @@ static proc_info_t *proc_info_get(const pid_t pid)
 	proc_info_t *pi = proc_infos[h];
 
 	while (pi) {
+		/* Probably need a cache refresh for pid re-used here */
 		if (pi->pid == pid)
 			return pi;
 		pi = pi->next;
@@ -281,6 +284,21 @@ static proc_info_t *proc_info_get(const pid_t pid)
 	return pi;
 }
 
+static void proc_list_free(proc_info_t **list)
+{
+	proc_info_t *pi = *list;
+
+	while (pi) {
+		proc_info_t *next = pi->next;
+
+		free(pi->cmdline);
+		free(pi);
+
+		pi = next;
+	}
+	*list = NULL;
+}
+
 /*
  *  proc_info_free()
  *	free process info
@@ -289,19 +307,8 @@ static void proc_info_free(void)
 {
 	int i;
 
-	for (i = 0; i < TABLE_SIZE; i++) {
-		proc_info_t *pi = proc_infos[i];
-
-		while (pi) {
-			proc_info_t *next = pi->next;
-
-			free(pi->cmdline);
-			free(pi);
-
-			pi = next;
-		}
-		proc_infos[i] = NULL;
-	}
+	for (i = 0; i < TABLE_SIZE; i++)
+		proc_list_free(&proc_infos[i]);
 }
 
 /*
@@ -455,9 +462,30 @@ static int fnotify_event_add(const struct fanotify_event_metadata *metadata)
 	if ((metadata->fd == FAN_NOFD) && (metadata->fd < 0))
 		return 0;
 	if (metadata->pid == my_pid)
-		return 0;
-	if ((opt_flags & OPT_PID) && (metadata->pid != opt_pid))
-		return 0;
+		goto tidy;
+	if (opt_flags & OPT_PID) {
+		proc_info_t *p;
+		bool found = false;
+
+		for (p = proc_list; p; p = p->next) {
+			if (p->pid && p->pid == metadata->pid) {
+				found = true;
+				break;
+			}
+		}
+		if (!found && named_procs) {
+			proc_info_t *cached_p = proc_info_get(metadata->pid);
+
+			for (p = proc_list; p; p = p->next) {
+				if (p->cmdline && strstr(p->cmdline, cached_p->cmdline)) {
+					found = true;
+					break;
+				}
+			}
+		}
+		if (!found)
+			goto tidy;
+	}
 
  	filename = fnotify_get_filename(-1, metadata->fd);
 	if (filename == NULL) {
@@ -494,8 +522,9 @@ static int fnotify_event_add(const struct fanotify_event_metadata *metadata)
 			(opt_flags & OPT_DIRNAME_STRIP) ?
 				basename(filename) : filename);
 	}
-	(void)close(metadata->fd);
 	free(filename);
+tidy:
+	(void)close(metadata->fd);
 
 	return 0;
 }
@@ -593,6 +622,52 @@ static void file_stat_dump(const double duration, const unsigned long top)
 	printf("\n");
 }
 
+static int parse_pid_list(char *arg)
+{
+	char *str, *token, *saveptr = NULL;
+
+	for (str = arg; (token = strtok_r(str, ",", &saveptr)) != NULL; str = NULL) {
+		pid_t pid = 0;
+		char *name = NULL;
+		proc_info_t *p;
+
+		/* Hit next option, which means no args given */
+		if (token[0] == '-')
+			break;
+
+		if (isdigit(token[0])) {
+			errno = 0;
+			pid = strtol(token, NULL, 10);
+			if (errno) {
+				fprintf(stderr, "Invalid PID specified.\n");
+				return -1;
+			}
+		} else {
+			name = strdup(token);
+			if (!name) {
+				fprintf(stderr, "Out of memory allocating process name info.\n");
+				return -1;
+			}
+			named_procs = true;
+		}
+		p = calloc(1, sizeof(proc_info_t));
+		if (!p) {
+			fprintf(stderr, "Out of memory allocating process info.\n");
+			free(name);
+			return -1;
+		}
+		p->pid = pid;
+		p->cmdline = name;
+		p->next = proc_list;
+		proc_list = p;
+	}
+	if (proc_list == NULL) {
+		fprintf(stderr, "No valid process ID or names given.\n");
+		return -1;
+	}
+	return 0;
+}
+
 /*
  *  show_usage()
  *	how to use
@@ -655,10 +730,8 @@ int main(int argc, char **argv)
 			opt_flags |= OPT_TIMESTAMP;
 			break;
 		case 'p':
-			errno = 0;
-			opt_pid = (pid_t)strtol(optarg, NULL, 10);
-			if (errno) {
-				fprintf(stderr, "Invalid value for -t option.\n");
+			if (parse_pid_list(optarg) < 0) {
+				fprintf(stderr, "Invalid value for -p option.\n");
 				exit(EXIT_FAILURE);
 			}
 			opt_flags |= OPT_PID;
@@ -776,6 +849,7 @@ int main(int argc, char **argv)
 	(void)close(fan_fd);
 	free(buffer);
 	proc_info_free();
+	proc_list_free(&proc_list);
 
 	exit(EXIT_SUCCESS);
 }
