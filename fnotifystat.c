@@ -50,6 +50,7 @@
 #define OPT_CUMULATIVE		(0x00000010)	/* Gather cumulative stats */
 #define OPT_TIMESTAMP		(0x00000020)	/* Show timestamp */
 #define OPT_SCALE		(0x00000040)	/* scale data */
+#define OPT_NOSTATS		(0x00000080)	/* No stats mode */
 
 #define PROC_CACHE_LIFE		(120)		/* Refresh cached pid info timeout */
 
@@ -74,6 +75,13 @@ typedef struct proc_info {
 	pid_t		pid;			/* pid of process */
 } proc_info_t;
 
+/* pathname list info */
+typedef struct pathname_t {
+	char		*pathname;		/* Pathname */
+	size_t		pathlen;		/* Length of path */
+	struct pathname_t *next;		/* Next in list */
+} pathname_t;
+
 /* scaling factor */
 typedef struct {
 	const char ch;				/* Scaling suffix */
@@ -89,6 +97,8 @@ static unsigned int opt_flags = OPT_SCALE;	/* option flags */
 static volatile bool stop_fnotifystat = false;	/* true -> stop fnotifystat */
 static pid_t my_pid;				/* pid of this programme */
 static bool named_procs = false;
+static pathname_t *paths_include;		/* paths to include */
+static pathname_t *paths_exclude;		/* paths to exclude */
 
 /*
  *  Attempt to catch a range of signals so
@@ -523,6 +533,27 @@ static file_stat_t *file_stat_get(const char *str, const pid_t pid)
 	return fs;
 }
 
+
+static int mark(int fan_fd, const char *pathname, int *count)
+{
+	pathname_t *pe;
+	int ret;
+
+	/* Check if pathname is not on exclude list */
+	for (pe = paths_exclude; pe; pe = pe->next) {
+		if (!strncmp(pe->pathname, pathname, pe->pathlen))
+			return 0;
+	}
+	ret = fanotify_mark(fan_fd, FAN_MARK_ADD | FAN_MARK_MOUNT,
+		FAN_ACCESS| FAN_MODIFY | FAN_OPEN | FAN_CLOSE |
+		FAN_ONDIR | FAN_EVENT_ON_CHILD, AT_FDCWD, pathname);
+	if (ret >= 0) {
+		(*count)++;
+		return 0;
+	}
+	return -1;
+}
+
 /*
  *  fnotify_event_init()
  *	initialize fnotify
@@ -536,25 +567,28 @@ static int fnotify_event_init(void)
 	if ((fan_fd = fanotify_init(0, 0)) < 0)
 		pr_error("cannot initialize fanotify");
 
-	if ((mounts = setmntent("/proc/self/mounts", "r")) == NULL) {
-		(void)close(fan_fd);
-		pr_error("setmntent cannot get mount points from /proc/self/mounts");
-	}
+	if (paths_include) {
+		pathname_t *pi;
 
-	/*
-	 *  Gather all mounted file systems and monitor them
-	 */
-	while ((mount = getmntent(mounts)) != NULL) {
-		int ret = fanotify_mark(fan_fd, FAN_MARK_ADD | FAN_MARK_MOUNT,
-			FAN_ACCESS| FAN_MODIFY | FAN_OPEN | FAN_CLOSE |
-			FAN_ONDIR | FAN_EVENT_ON_CHILD, AT_FDCWD,
-			mount->mnt_dir);
-		if (ret >= 0)
-			count++;
-	}
-	if (endmntent(mounts) < 0) {
-		(void)close(fan_fd);
-		pr_error("endmntent failed");
+		for (pi = paths_include; pi; pi = pi->next) {
+			(void)mark(fan_fd, pi->pathname, &count);
+		}
+	} else {
+		/* No paths given, do all mount points */
+		if ((mounts = setmntent("/proc/self/mounts", "r")) == NULL) {
+			(void)close(fan_fd);
+			pr_error("setmntent cannot get mount points from /proc/self/mounts");
+		}
+		/*
+		 *  Gather all mounted file systems and monitor them
+		 */
+		while ((mount = getmntent(mounts)) != NULL)
+			(void)mark(fan_fd, mount->mnt_dir, &count);
+
+		if (endmntent(mounts) < 0) {
+			(void)close(fan_fd);
+			pr_error("endmntent failed");
+		}
 	}
 
 	/* This really should not happen, / is always mounted */
@@ -857,6 +891,61 @@ static int parse_pid_list(char *arg)
 }
 
 /*
+ *  parse_path_list()
+ *	parse pathname list
+ */
+static int parse_pathname_list(char *arg, pathname_t **list)
+{
+	char *str, *token, *saveptr = NULL;
+	bool added = false;
+
+	for (str = arg; (token = strtok_r(str, ",", &saveptr)) != NULL; str = NULL) {
+		pathname_t *p;
+
+		p = calloc(1, sizeof(pathname_t));
+		if (!p) {
+			fprintf(stderr, "Out of memory allocating pathname info.\n");
+			return -1;
+		}
+		p->pathname = strdup(token);
+		if (!p->pathname) {
+			fprintf(stderr, "Out of memory allocating pathname info.\n");
+			free(p);
+			return -1;
+		}
+		p->pathlen = strlen(p->pathname);
+		p->next = *list;
+		*list = p;
+		added = true;
+	}
+
+	if (!added) {
+		fprintf(stderr, "No valid pathnames were given.\n");
+		return -1;
+	}
+	return 0;
+}
+
+/*
+ *  pathname_list_free()
+ *	free and nullify pathname list
+ */
+static void pathname_list_free(pathname_t **list)
+{
+	pathname_t *p = *list;
+
+	while (p) {
+		pathname_t *next = p->next;
+
+		free(p->pathname);
+		free(p);
+
+		p = next;
+	}
+	*list = NULL;
+}
+
+/*
  *  show_usage()
  *	how to use
  */
@@ -867,11 +956,15 @@ void show_usage(void)
 		"  -c     cumulative totals over time\n"
 		"  -d     strip directory off the filenames\n"
 		"  -h     show this help\n"
+		"  -i     specify pathnames to include on path events\n"
+		"  -n     no stats, just -v verbose mode only."
 		"  -p PID collect stats for just process with pid PID\n"
 		"  -P     sort stats by process ID\n"
+		"  -s     disable scaling of file counts\n"
 		"  -t N   show just the busiest N files\n"
 		"  -T     show timestamp\n"
-		"  -v     verbose mode, dump out all file activity\n");
+		"  -v     verbose mode, dump out all file activity\n"
+		"  -x     specify pathnames to exclude on path events\n");
 }
 
 int main(int argc, char **argv)
@@ -886,21 +979,35 @@ int main(int argc, char **argv)
 	struct timeval tv1, tv2;
 
 	for (;;) {
-		int c = getopt(argc, argv, "hvdt:p:PcTs");
+		int c = getopt(argc, argv, "hvdt:p:PcTsi:x:n");
 		if (c == -1)
 			break;
 		switch (c) {
 		case 'c':
 			opt_flags |= OPT_CUMULATIVE;
 			break;
+		case 'd':
+			opt_flags |= OPT_DIRNAME_STRIP;
+			break;
 		case 'h':
 			show_usage();
 			exit(EXIT_SUCCESS);
-		case 'v':
-			opt_flags |= OPT_VERBOSE;
+		case 'i':
+			if (parse_pathname_list(optarg, &paths_include))
+				exit(EXIT_FAILURE);
 			break;
-		case 'd':
-			opt_flags |= OPT_DIRNAME_STRIP;
+		case 'n':
+			opt_flags |= (OPT_NOSTATS | OPT_VERBOSE);
+			break;
+		case 'p':
+			if (parse_pid_list(optarg) < 0) {
+				fprintf(stderr, "Invalid value for -p option.\n");
+				exit(EXIT_FAILURE);
+			}
+			opt_flags |= OPT_PID;
+			break;
+		case 'P':
+			opt_flags |= OPT_SORT_BY_PID;
 			break;
 		case 's':
 			opt_flags &= ~OPT_SCALE;
@@ -920,15 +1027,12 @@ int main(int argc, char **argv)
 		case 'T':
 			opt_flags |= OPT_TIMESTAMP;
 			break;
-		case 'p':
-			if (parse_pid_list(optarg) < 0) {
-				fprintf(stderr, "Invalid value for -p option.\n");
-				exit(EXIT_FAILURE);
-			}
-			opt_flags |= OPT_PID;
+		case 'v':
+			opt_flags |= OPT_VERBOSE;
 			break;
-		case 'P':
-			opt_flags |= OPT_SORT_BY_PID;
+		case 'x':
+			if (parse_pathname_list(optarg, &paths_exclude))
+				exit(EXIT_FAILURE);
 			break;
 		case '?':
 			printf("Try '%s -h' for more information.\n", app_name);
@@ -1039,13 +1143,16 @@ int main(int argc, char **argv)
 			pr_error("gettimeofday failed");
 
 		duration = timeval_double(&tv2) - timeval_double(&tv1);
-		file_stat_dump(duration, top);
+		if (!(opt_flags & OPT_NOSTATS))
+			file_stat_dump(duration, top);
 	}
 
 	(void)close(fan_fd);
 	free(buffer);
 	proc_info_free();
 	proc_list_free(&proc_list);
+	pathname_list_free(&paths_include);
+	pathname_list_free(&paths_exclude);
 
 	exit(EXIT_SUCCESS);
 }

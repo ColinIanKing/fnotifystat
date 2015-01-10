@@ -45,6 +45,15 @@ strip full directory path off the filenames.
 .B \-h
 show help
 .TP
+.B \-i
+pathnames to include in filename activity. By defualt, all mounted filesystems are monitored, however, this
+may produce to much information.  The \-i option allows one to provide a comma separated list of just the
+specific paths to monitor.
+.TP
+.B \-n
+no periodic statistics, just verbose mode only.  Do not display periodic file activity statistics, but just show the verbose
+mode \-v file activity.
+.TP
 .B \-p proclist
 monitor specific processes. proclist is a comma separated list of process IDs or process names to monitor.
 .TP
@@ -77,6 +86,12 @@ Name of accessed file
 Note that the names of deleted filenames cannot be determined and are flagged by the "(deleted)" tag.
 .TE
 .TP
+.B \-x
+pathnames to exclude from filename activity. By defualt, all mounted filesystems are monitored, however, this
+may produce to much information.  The \-x option allows one to provide a comma separated list of pathnames to
+exclude.  Matching is performed on partial pathnames, for example \-x /pro will exclude all paths starting with
+/pro, such as /proc.
+.TP
 .B SIGUSR1
 Sending SIGUSR1 to fnotifystat will toggle the verbose option (\-v) on/off.
 .SH EXAMPLES
@@ -104,6 +119,11 @@ sudo fnotifystat \-p thunderbird,1827
 Show every file notify event and the top 20 active activity files over a single period of 5 minutes.
 .RS 8
 sudo notifystat \-v \-d \-c 5m 1
+.RE
+.LP
+Just show every file notify event on /sys and /proc and no periodic statisics.
+.RS 8
+sudo fnotifystat \-n \-i /sys,/proc
 .RE
 .SH AUTHOR
 fnotifystat was written by Colin King <colin.king@canonical.com>
