@@ -245,10 +245,11 @@ static char *count_to_str(
 	const size_t buflen)
 {
 	double v = val;
-	size_t i;
 	static const char scales[] = " KMB";
 
 	if (opt_flags & OPT_SCALE) {
+		size_t i;
+
 		for (i = 0; i < sizeof(scales) - 1; i++, v /= 1000) {
 			if (v <= 500)
 				break;
