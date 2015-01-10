@@ -33,11 +33,12 @@
 #include <time.h>
 #include <fcntl.h>
 #include <signal.h>
+#include <dirent.h>
 #include <sys/fanotify.h>
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <sys/time.h>
-
+#include <sys/types.h>
 
 #define TABLE_SIZE		(17627)		/* Best if prime */
 #define BUFFER_SIZE		(4096)
@@ -435,6 +436,29 @@ update:
 	pi->whence = timeval_to_double();
 
 	return pi;
+}
+
+/*
+ *  proc_info_get_all()
+ *	get and cache all processes
+ */
+static void proc_info_get_all(void)
+{
+	DIR *dir;
+	struct dirent *dirp;
+
+	dir = opendir("/proc");
+	if (dir == NULL) {
+		fprintf(stderr, "Cannot open /proc, is it mounted?\n");
+		exit(EXIT_FAILURE);
+	}
+	while ((dirp = readdir(dir)) != NULL) {
+		if (isdigit(dirp->d_name[0])) {
+			pid_t pid = atoi(dirp->d_name);
+			(void)proc_info_get(pid);
+		}
+	}
+	closedir(dir);
 }
 
 /*
@@ -952,6 +976,8 @@ int main(int argc, char **argv)
 			exit(EXIT_FAILURE);
 		}
 	}
+
+	proc_info_get_all();
 
 	my_pid = getpid();
 
