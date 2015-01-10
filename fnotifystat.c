@@ -729,7 +729,7 @@ static int fnotify_event_add(const struct fanotify_event_metadata *metadata)
 	}
 
 	if (opt_flags & OPT_VERBOSE) {
-		printf("%2.2d/%2.2d/%-2.2d %2.2d:%2.2d:%2.2d (%4.4s) %5d %s %s\n",
+		printf("%2.2d/%2.2d/%-2.2d %2.2d:%2.2d:%2.2d (%4.4s) %5d %-15.15s %s\n",
 			tm.tm_mday, tm.tm_mon + 1, (tm.tm_year+1900) % 100,
 			tm.tm_hour, tm.tm_min, tm.tm_sec,
 			fnotify_mask_to_str(metadata->mask),
