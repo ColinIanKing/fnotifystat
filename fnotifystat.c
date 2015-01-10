@@ -957,7 +957,7 @@ void show_usage(void)
 		"  -d     strip directory off the filenames\n"
 		"  -h     show this help\n"
 		"  -i     specify pathnames to include on path events\n"
-		"  -n     no stats, just -v verbose mode only."
+		"  -n     no stats, just -v verbose mode only.\n"
 		"  -p PID collect stats for just process with pid PID\n"
 		"  -P     sort stats by process ID\n"
 		"  -s     disable scaling of file counts\n"
