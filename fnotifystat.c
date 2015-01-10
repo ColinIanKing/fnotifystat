@@ -157,6 +157,7 @@ static const int signals[] = {
 static void pr_error(const char *msg) __attribute__ ((noreturn));
 static void pr_nomem(const char *msg) __attribute__ ((noreturn));
 
+/* Time scaling factors */
 static const scale_t time_scales[] = {
 	{ 's',  1 },
 	{ 'm',  60 },
@@ -225,11 +226,19 @@ static double get_double_scale(
 	exit(EXIT_FAILURE);
 }
 
+/*
+ *  get_seconds()
+ *	get time in seconds, with scaling suffix support.
+ */
 static inline double get_seconds(const char *const str)
 {
 	return get_double_scale(str, time_scales, "time");
 }
 
+/*
+ *  count_to_str()
+ *	double precision count values to strings
+ */
 static char *count_to_str(
 	const double val,
 	char *const buf,
@@ -417,6 +426,10 @@ update:
 	return pi;
 }
 
+/*
+ *  proc_list_free()
+ *	free proc list
+ */
 static void proc_list_free(proc_info_t **list)
 {
 	proc_info_t *pi = *list;
@@ -757,6 +770,10 @@ static void file_stat_dump(const double duration, const unsigned long top)
 	printf("\n");
 }
 
+/*
+ *  parse_pid_list()
+ *	parse pids/process name list
+ */
 static int parse_pid_list(char *arg)
 {
 	char *str, *token, *saveptr = NULL;
