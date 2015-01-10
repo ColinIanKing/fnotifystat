@@ -878,6 +878,9 @@ int main(int argc, char **argv)
 		case 'P':
 			opt_flags |= OPT_SORT_BY_PID;
 			break;
+		case '?':
+			printf("Try '%s -h' for more information.\n", app_name);
+			exit(EXIT_FAILURE);
 		default:
 			show_usage();
 			exit(EXIT_FAILURE);
