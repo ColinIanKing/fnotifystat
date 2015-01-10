@@ -495,7 +495,7 @@ static file_stat_t *file_stat_get(const char *str, const pid_t pid)
  */
 static int fnotify_event_init(void)
 {
-	int fan_fd, ret, count = 0;
+	int fan_fd, count = 0;
 	FILE* mounts;
 	struct mntent* mount;
 
@@ -511,7 +511,7 @@ static int fnotify_event_init(void)
 	 *  Gather all mounted file systems and monitor them
 	 */
 	while ((mount = getmntent(mounts)) != NULL) {
-		ret = fanotify_mark(fan_fd, FAN_MARK_ADD | FAN_MARK_MOUNT,
+		int ret = fanotify_mark(fan_fd, FAN_MARK_ADD | FAN_MARK_MOUNT,
 			FAN_ACCESS| FAN_MODIFY | FAN_OPEN | FAN_CLOSE |
 			FAN_ONDIR | FAN_EVENT_ON_CHILD, AT_FDCWD,
 			mount->mnt_dir);
