@@ -48,6 +48,7 @@
 #define OPT_SORT_BY_PID		(0x00000008)	/* Sort by PID */
 #define OPT_CUMULATIVE		(0x00000010)	/* Gather cumulative stats */
 #define OPT_TIMESTAMP		(0x00000020)	/* Show timestamp */
+#define OPT_SCALE		(0x00000040)	/* scale data */
 
 #define PROC_CACHE_LIFE		(120)		/* Refresh cached pid info timeout */
 
@@ -77,7 +78,7 @@ static file_stat_t *file_stats[TABLE_SIZE];	/* hash table of file stats */
 static proc_info_t *proc_infos[TABLE_SIZE];	/* hash table of proc infos */
 static proc_info_t *proc_list;			/* processes to monitor */
 static size_t file_stats_size;			/* number of items in hash table */
-static unsigned int opt_flags;			/* option flags */
+static unsigned int opt_flags = OPT_SCALE;	/* option flags */
 static volatile bool stop_fnotifystat = false;	/* true -> stop fnotifystat */
 static pid_t my_pid;				/* pid of this programme */
 static bool named_procs = false;
@@ -150,6 +151,27 @@ static const int signals[] = {
 static void pr_error(const char *msg) __attribute__ ((noreturn));
 static void pr_nomem(const char *msg) __attribute__ ((noreturn));
 
+static char *count_to_str(
+	const double val,
+	char *const buf,
+	const size_t buflen)
+{
+	double v = val;
+	size_t i;
+	static const char scales[] = " KMB";
+
+	if (opt_flags & OPT_SCALE) {
+		for (i = 0; i < sizeof(scales) - 1; i++, v /= 1000) {
+			if (v <= 500)
+				break;
+		}
+		snprintf(buf, buflen, "%5.1f%c", v, scales[i]);
+	} else {
+		snprintf(buf, buflen, "%6.1f", v);
+	}
+
+	return buf;
+}
 
 /*
  *  timeval_to_double()
@@ -631,12 +653,14 @@ static void file_stat_dump(const double duration, const unsigned long top)
 	printf(" Total   Open  Close   Read  Write  PID  Process         Pathname%s\n", ts);
 	for (j = 0; j < file_stats_size; j++) {
 		if (top && j <= top) {
-			printf("%6.2f %6.2f %6.2f %6.2f %6.2f %5d %-15.15s %s\n",
-				(double)sorted[j]->total / duration,
-				(double)sorted[j]->open / duration,
-				(double)sorted[j]->close / duration,
-				(double)sorted[j]->read / duration,
-				(double)sorted[j]->write / duration,
+			char buf[5][32];
+
+			printf("%s %s %s %s %s %5d %-15.15s %s\n",
+				count_to_str(sorted[j]->total / duration, buf[0], sizeof(buf[0])),
+				count_to_str(sorted[j]->open / duration, buf[1], sizeof(buf[1])),
+				count_to_str(sorted[j]->close / duration, buf[2], sizeof(buf[2])),
+				count_to_str(sorted[j]->read/ duration, buf[3], sizeof(buf[3])),
+				count_to_str(sorted[j]->write / duration, buf[4], sizeof(buf[4])),
 				sorted[j]->pid,
 				proc_info_get(sorted[j]->pid)->cmdline,
 				(opt_flags & OPT_DIRNAME_STRIP) ?
@@ -731,7 +755,7 @@ int main(int argc, char **argv)
 	struct timeval tv1, tv2;
 
 	for (;;) {
-		int c = getopt(argc, argv, "hvdt:p:PcT");
+		int c = getopt(argc, argv, "hvdt:p:PcTs");
 		if (c == -1)
 			break;
 		switch (c) {
@@ -746,6 +770,9 @@ int main(int argc, char **argv)
 			break;
 		case 'd':
 			opt_flags |= OPT_DIRNAME_STRIP;
+			break;
+		case 's':
+			opt_flags &= ~OPT_SCALE;
 			break;
 		case 't':
 			errno = 0;

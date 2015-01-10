@@ -45,6 +45,11 @@ monitor specific processes. proclist is a comma separated list of process IDs or
 .B \-P
 sort stats by pid first, then by totals and filename
 .TP
+.B \-s
+turn off data scaling. By default the read, write, open and close counts are displayed by scaling by multiple of
+thousands with suffixes of K (thousands), M (millions), B (billions).  The \-s option disables this, resulting in
+less aesthetically pleasing unaligned columns of data.
+.TP
 .B \-t N
 only display the top busiest N files.
 .TP
