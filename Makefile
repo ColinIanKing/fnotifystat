@@ -16,7 +16,7 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
 #
 
-VERSION=0.01.06
+VERSION=0.01.07
 
 CFLAGS += -Wall -Wextra -DVERSION='"$(VERSION)"'
 
@@ -24,7 +24,7 @@ BINDIR=/usr/bin
 MANDIR=/usr/share/man/man8
 
 fnotifystat: fnotifystat.o
-	$(CC) $(CFLAGS) $< -lm -o $@ $(LDFLAGS)
+	$(CC) $(CFLAGS) $< -o $@ $(LDFLAGS)
 
 fnotifystat.8.gz: fnotifystat.8
 	gzip -c $< > $@
