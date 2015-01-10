@@ -98,9 +98,9 @@ Show file activity of thunderbird and process ID 1827.
 sudo fnotifystat \-p thunderbird,1827
 .RE
 .LP
-Show top 20 active activity files over a single period of 5 minutes.
+Show every file notify event and the top 20 active activity files over a single period of 5 minutes.
 .RS 8
-./fnotifystat  -d -c 60 1
+./fnotifystat \-v \-d \-c 5m 1
 .RE
 .SH AUTHOR
 fnotifystat was written by Colin King <colin.king@canonical.com>
