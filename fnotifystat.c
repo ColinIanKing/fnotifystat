@@ -722,6 +722,10 @@ static void fnotify_event_show(
 	static stash_info_t previous;
 	char str[64];
 
+	if (!(opt_flags & OPT_VERBOSE)) {
+		free(filename);
+		return;
+	}
 	get_tm(&tm);
 
 	if (previous.fs == NULL) {
