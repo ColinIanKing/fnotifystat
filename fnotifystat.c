@@ -54,6 +54,7 @@
 #define OPT_MERGE		(0x00000100)	/* Merge events */
 #define OPT_DEVICE		(0x00000200)	/* Stats by mount */
 #define OPT_INODE		(0x00000400)	/* Filenames by inode, dev */
+#define OPT_FORCE		(0x00000800)	/* Force output */
 
 #define PROC_CACHE_LIFE		(120)		/* Refresh cached pid info timeout */
 
@@ -916,7 +917,7 @@ static void file_stat_dump(const double duration, const unsigned long top)
 	uint64_t i, j;
 	char ts[32];
 
-	if (!file_stats_size)
+	if (!(opt_flags & OPT_FORCE) && !file_stats_size)
 		return;
 
 	sorted = calloc(file_stats_size, sizeof(file_stat_t *));
@@ -1093,6 +1094,7 @@ void show_usage(void)
 		"  -c     cumulative totals over time\n"
 		"  -d     strip directory off the filenames\n"
 		"  -D     order stats by unique device\n"
+		"  -f     force output\n"
 		"  -h     show this help\n"
 		"  -i     specify pathnames to include on path events\n"
 		"  -I     order stats by unique device and inode\n"
@@ -1119,7 +1121,7 @@ int main(int argc, char **argv)
 	struct timeval tv1, tv2;
 
 	for (;;) {
-		int c = getopt(argc, argv, "hvdt:p:PcTsi:x:nmMDI");
+		int c = getopt(argc, argv, "hvdt:p:PcTsi:x:nmMDIf");
 		if (c == -1)
 			break;
 		switch (c) {
@@ -1131,6 +1133,9 @@ int main(int argc, char **argv)
 			break;
 		case 'D':
 			opt_flags |= OPT_DEVICE;
+			break;
+		case 'f':
+			opt_flags |= OPT_FORCE;
 			break;
 		case 'h':
 			show_usage();

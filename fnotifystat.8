@@ -32,6 +32,8 @@ Statistics are output every 'delay' seconds. One can use the 'm' (minutes), 'h' 
 
 Statistics are ouput 'count' many times before exiting. If count is not specified then fnotifystat will run until it is stopped.
 
+Note that if no file activity has occured during a sample delay period then no new statistics are output. The \-f option will force output if desired.
+
 .SH OPTIONS
 fnotifystat options are as follow:
 .TP
@@ -40,6 +42,9 @@ dump cumulative totals over all time rather than totals over each sample period.
 .TP
 .B \-d
 strip full directory path off the filenames.
+.TP
+.B \-f
+force statistics output even if no file activity has occurred during the last sampling period.
 .TP
 .B \-D
 order statistics by unique device.  Rather than ordering periodic statistics by unique filename, instead order them by unique device (major, minor) number.  This allows one to see file activity on a per device basis.
