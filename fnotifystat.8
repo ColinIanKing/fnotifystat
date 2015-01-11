@@ -34,6 +34,24 @@ Statistics are ouput 'count' many times before exiting. If count is not specifie
 
 Note that if no file activity has occured during a sample delay period then no new statistics are output. The \-f option will force output if desired.
 
+By default, fnotifystat will display the following statistics every sample 'delay' seconds:
+.TS
+l.
+Average number of opens, closes, reads and writes over the sample period
+Average number of opens over the sample period
+Average number of closes over the sample period
+Average number of reads over the sample period
+Average number of writes over the sample period
+Process ID
+Pathename
+.TE
+.br
+
+The \-I option will display the device (major, minor) number and inode instead of the filename while the \-I option will just show the device (major, minor) number.
+.br
+
+The \-c option will display the cumulative count of the open, close, read and writes rather than the averages.
+
 .SH OPTIONS
 fnotifystat options are as follow:
 .TP
