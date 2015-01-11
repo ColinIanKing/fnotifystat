@@ -55,6 +55,7 @@
 
 #define PROC_CACHE_LIFE		(120)		/* Refresh cached pid info timeout */
 
+#define CMD_UNKNOWN		"<unknown>"
 
 /* fnotify file activity stats */
 typedef struct file_stat {
@@ -93,6 +94,7 @@ typedef struct {
 typedef struct {
 	char *		filename;		/* Filename */
 	uint64_t	mask;			/* Event mask */
+	uint64_t	count;			/* Merged event count */
 	file_stat_t	*fs;			/* File Info */
 	struct tm	tm;			/* Time of previous event */
 } stash_info_t;
@@ -362,12 +364,12 @@ static char *get_pid_cmdline(const pid_t id)
 	snprintf(buffer, sizeof(buffer), "/proc/%d/cmdline", id);
 
 	if ((fd = open(buffer, O_RDONLY)) < 0)
-		return strdup("<unknown>");
+		return strdup(CMD_UNKNOWN);
 
 	memset(buffer, 0, sizeof(buffer));
 	if ((ret = read(fd, buffer, sizeof(buffer))) <= 0) {
 		(void)close(fd);
-		return strdup("<unknown>");
+		return strdup(CMD_UNKNOWN);
 	}
 	(void)close(fd);
 
@@ -436,6 +438,12 @@ static proc_info_t *proc_info_get(const pid_t pid)
 	while (pi) {
 		if (pi->pid == pid) {
 			double now = timeval_to_double();
+
+			/* Name lookup failed last time, try again */
+			if (!strcmp(pi->cmdline, CMD_UNKNOWN)) {
+				free(pi->cmdline);
+				goto update;
+			}
 			if (now < pi->whence + PROC_CACHE_LIFE)
 				return pi;
 
@@ -718,6 +726,7 @@ static void fnotify_event_show(
 {
 	struct tm tm;
 	static stash_info_t previous;
+	char str[64];
 
 	get_tm(&tm);
 
@@ -727,6 +736,7 @@ static void fnotify_event_show(
 		previous.mask = mask;
 		previous.filename = filename;
 		previous.tm = tm;
+		previous.count = 0;
 		return;
 	}
 
@@ -736,9 +746,16 @@ static void fnotify_event_show(
 	 */
 	if ((opt_flags & OPT_MERGE) &&
 	    (fs == previous.fs) &&
+            (tm.tm_sec == previous.tm.tm_sec) &&
+            (tm.tm_min == previous.tm.tm_min) &&
+            (tm.tm_hour == previous.tm.tm_hour) &&
+            (tm.tm_mday == previous.tm.tm_mday) &&
+            (tm.tm_mon == previous.tm.tm_mon) &&
+            (tm.tm_year == previous.tm.tm_year) &&
 	    (filename != NULL) &&
             !strcmp(filename, previous.filename)) {
 		previous.mask |= mask;
+		previous.count++;
 		free(filename);
 		return;
 	}
@@ -747,9 +764,11 @@ static void fnotify_event_show(
 	 *  Event for a different file and process has come in
 	 *  so flush out old..
 	 */
-	printf("%2.2d/%2.2d/%-2.2d %2.2d:%2.2d:%2.2d (%4.4s) %5d %-15.15s %s\n",
+	count_to_str((double)previous.count, str, sizeof(str));
+	printf("%2.2d/%2.2d/%-2.2d %2.2d:%2.2d:%2.2d %s (%4.4s) %5d %-15.15s %s\n",
 		previous.tm.tm_mday, previous.tm.tm_mon + 1, (previous.tm.tm_year+1900) % 100,
 		previous.tm.tm_hour, previous.tm.tm_min, previous.tm.tm_sec,
+		str,
 		fnotify_mask_to_str(previous.mask),
 		previous.fs->pid, proc_info_get(previous.fs->pid)->cmdline,
 		(opt_flags & OPT_DIRNAME_STRIP) ?
@@ -761,6 +780,7 @@ static void fnotify_event_show(
 	previous.mask = mask;
 	previous.filename = filename;
 	previous.tm = tm;
+	previous.count = 0;
 }
 
 /*
