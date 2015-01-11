@@ -1,3 +1,18 @@
+fnotifystat (0.01.08-1) unstable; urgency=medium
+
+  * Makefile: bump version
+  * Add -I and -D inode and device ordering modes
+  * Forgot to only print verbose info with verbose mode set
+  * Fix table, move notes outside table
+  * Don't trap SIGSEGV SIGBUS
+  * Make it easier to break out with SIGINT etc
+  * Add event count in verbose mode
+  * Add -m merge option
+  * Fix delay explanation in manual
+  * Add newline to -n help info
+
+ -- Colin King <colin.king@canonical.com>  Sun, 11 Jan 2015 14:23:00 +0000
+
 fnotifystat (0.01.07-1) unstable; urgency=medium
 
   * Makefile: remove math lib and bump version
