@@ -435,6 +435,7 @@ static proc_info_t *proc_info_get(const pid_t pid)
 	while (pi) {
 		if (pi->pid == pid) {
 			double now = timeval_to_double();
+			char *cmdline;
 
 			/* Name lookup failed last time, try again */
 			if (!strcmp(pi->cmdline, CMD_UNKNOWN)) {
@@ -444,9 +445,19 @@ static proc_info_t *proc_info_get(const pid_t pid)
 			if (now < pi->whence + PROC_CACHE_LIFE)
 				return pi;
 
+			if ((cmdline = get_pid_cmdline(pid)) == NULL)
+				pr_nomem("allocating process command line");
+
+			if (!strcmp(pi->cmdline, CMD_UNKNOWN)) {
+				/* It's probably died, so no new process name */
+				free(cmdline);
+				return pi;
+			} 
 			/* Deemed "stale", so refresh stats */
 			free(pi->cmdline);
-			goto update;
+			pi->cmdline = cmdline;
+			pi->whence = timeval_to_double();
+			return pi;
 		}
 		pi = pi->next;
 	}
@@ -916,6 +927,7 @@ static void file_stat_dump(const double duration, const unsigned long top)
 	file_stat_t **sorted;
 	uint64_t i, j;
 	char ts[32];
+	double dur = (opt_flags & OPT_CUMULATIVE) ? 1.0 : duration;
 
 	if (!(opt_flags & OPT_FORCE) && !file_stats_size)
 		return;
@@ -955,11 +967,11 @@ static void file_stat_dump(const double duration, const unsigned long top)
 			char buf[5][32];
 
 			printf("%s %s %s %s %s %5d %-15.15s %s\n",
-				count_to_str(sorted[j]->total / duration, buf[0], sizeof(buf[0])),
-				count_to_str(sorted[j]->open / duration, buf[1], sizeof(buf[1])),
-				count_to_str(sorted[j]->close / duration, buf[2], sizeof(buf[2])),
-				count_to_str(sorted[j]->read/ duration, buf[3], sizeof(buf[3])),
-				count_to_str(sorted[j]->write / duration, buf[4], sizeof(buf[4])),
+				count_to_str(sorted[j]->total / dur, buf[0], sizeof(buf[0])),
+				count_to_str(sorted[j]->open / dur, buf[1], sizeof(buf[1])),
+				count_to_str(sorted[j]->close / dur, buf[2], sizeof(buf[2])),
+				count_to_str(sorted[j]->read/ dur, buf[3], sizeof(buf[3])),
+				count_to_str(sorted[j]->write / dur, buf[4], sizeof(buf[4])),
 				sorted[j]->pid,
 				proc_info_get(sorted[j]->pid)->cmdline,
 				(opt_flags & OPT_DIRNAME_STRIP) ?
