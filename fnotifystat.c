@@ -51,6 +51,7 @@
 #define OPT_TIMESTAMP		(0x00000020)	/* Show timestamp */
 #define OPT_SCALE		(0x00000040)	/* scale data */
 #define OPT_NOSTATS		(0x00000080)	/* No stats mode */
+#define OPT_MERGE		(0x00000100)	/* Merge events */
 
 #define PROC_CACHE_LIFE		(120)		/* Refresh cached pid info timeout */
 
@@ -87,6 +88,14 @@ typedef struct {
 	const char ch;				/* Scaling suffix */
 	const uint64_t scale;			/* Amount to scale by */
 } scale_t;
+
+/* stashed context for verbose info */
+typedef struct {
+	char *		filename;		/* Filename */
+	uint64_t	mask;			/* Event mask */
+	file_stat_t	*fs;			/* File Info */
+	struct tm	tm;			/* Time of previous event */
+} stash_info_t;
 
 static const char *app_name = "fnotifystat";	/* name of this tool */
 static file_stat_t *file_stats[TABLE_SIZE];	/* hash table of file stats */
@@ -355,6 +364,7 @@ static char *get_pid_cmdline(const pid_t id)
 	if ((fd = open(buffer, O_RDONLY)) < 0)
 		return strdup("<unknown>");
 
+	memset(buffer, 0, sizeof(buffer));
 	if ((ret = read(fd, buffer, sizeof(buffer))) <= 0) {
 		(void)close(fd);
 		return strdup("<unknown>");
@@ -363,8 +373,10 @@ static char *get_pid_cmdline(const pid_t id)
 
 	buffer[sizeof(buffer)-1] = '\0';
 	for (ptr = buffer; *ptr && (ptr < buffer + ret); ptr++) {
-		if (*ptr == ' ')
+		if (*ptr == ' ') {
 			*ptr = '\0';
+			break;
+		}
 	}
 
 	return strdup(basename(buffer));
@@ -503,6 +515,27 @@ static void proc_info_free(void)
 }
 
 /*
+ *  file_stat_free()
+ *	free file stats hash table
+ */
+static void file_stat_free(void)
+{
+	int i;
+
+	for (i = 0; i < TABLE_SIZE; i++) {
+		file_stat_t *fs = file_stats[i];
+
+		while (fs) {
+			file_stat_t *next = fs->next;
+
+			free(fs->path);
+			free(fs);
+			fs = next;
+		}
+	}
+}
+
+/*
  *  file_stat_get()
  *	get file stats on a file touched by a given process by PID.
  *	existing stats are returned, new stats are allocated and returned.
@@ -533,7 +566,11 @@ static file_stat_t *file_stat_get(const char *str, const pid_t pid)
 	return fs;
 }
 
-
+/*
+ *  mark()
+ *	add a new fanotify mask if filename not in
+ *	exclude list and increment the counter
+ */
 static int mark(int fan_fd, const char *pathname, int *count)
 {
 	pathname_t *pe;
@@ -665,13 +702,74 @@ static const char *fnotify_mask_to_str(const int mask)
 }
 
 /*
+ *  fnotify_event_show()
+ *	if event is another masked event on any previous
+ *	file activity just or-in the event mask and return,
+ *	otherwise dump out the previous event and start
+ *	accumulating event masks for the new event.
+ *
+ *	calls with null args will flush out the last
+ *	pending event.
+ */
+static void fnotify_event_show(
+	file_stat_t *fs,
+	char *filename,
+	const uint64_t mask)
+{
+	struct tm tm;
+	static stash_info_t previous;
+
+	get_tm(&tm);
+
+	if (previous.fs == NULL) {
+		/* Stash for first the first time */
+		previous.fs = fs;
+		previous.mask = mask;
+		previous.filename = filename;
+		previous.tm = tm;
+		return;
+	}
+
+	/*
+	 * merge mode, same fs info and filename..
+	 * then merge flags and wait for next event
+	 */
+	if ((opt_flags & OPT_MERGE) &&
+	    (fs == previous.fs) &&
+	    (filename != NULL) &&
+            !strcmp(filename, previous.filename)) {
+		previous.mask |= mask;
+		free(filename);
+		return;
+	}
+
+	/*
+	 *  Event for a different file and process has come in
+	 *  so flush out old..
+	 */
+	printf("%2.2d/%2.2d/%-2.2d %2.2d:%2.2d:%2.2d (%4.4s) %5d %-15.15s %s\n",
+		previous.tm.tm_mday, previous.tm.tm_mon + 1, (previous.tm.tm_year+1900) % 100,
+		previous.tm.tm_hour, previous.tm.tm_min, previous.tm.tm_sec,
+		fnotify_mask_to_str(previous.mask),
+		previous.fs->pid, proc_info_get(previous.fs->pid)->cmdline,
+		(opt_flags & OPT_DIRNAME_STRIP) ?
+			basename(previous.filename) : previous.filename);
+
+	/* Free old filename and stash new event */
+	free(previous.filename);
+	previous.fs = fs;
+	previous.mask = mask;
+	previous.filename = filename;
+	previous.tm = tm;
+}
+
+/*
  *  fnotify_event_add()
  *	add a new fnotify event
  */
 static int fnotify_event_add(const struct fanotify_event_metadata *metadata)
 {
 	char 	*filename;
-	struct tm tm;
 	file_stat_t *fs;
 
 	if ((metadata->fd == FAN_NOFD) && (metadata->fd < 0))
@@ -708,8 +806,6 @@ static int fnotify_event_add(const struct fanotify_event_metadata *metadata)
 		pr_error("allocating fnotify filename");
 	}
 
-	get_tm(&tm);
-
 	fs = file_stat_get(filename, metadata->pid);
 	if (metadata->mask & FAN_OPEN) {
 		fs->open++;
@@ -728,16 +824,12 @@ static int fnotify_event_add(const struct fanotify_event_metadata *metadata)
 		fs->total++;
 	}
 
-	if (opt_flags & OPT_VERBOSE) {
-		printf("%2.2d/%2.2d/%-2.2d %2.2d:%2.2d:%2.2d (%4.4s) %5d %-15.15s %s\n",
-			tm.tm_mday, tm.tm_mon + 1, (tm.tm_year+1900) % 100,
-			tm.tm_hour, tm.tm_min, tm.tm_sec,
-			fnotify_mask_to_str(metadata->mask),
-			metadata->pid, proc_info_get(metadata->pid)->cmdline,
-			(opt_flags & OPT_DIRNAME_STRIP) ?
-				basename(filename) : filename);
-	}
-	free(filename);
+	/*
+	 *  Note: this stashes filename which is
+	 *  free'd on next call if fs and filename
+	 *  are different
+	 */
+	fnotify_event_show(fs, filename, metadata->mask);
 tidy:
 	(void)close(metadata->fd);
 
@@ -957,6 +1049,7 @@ void show_usage(void)
 		"  -d     strip directory off the filenames\n"
 		"  -h     show this help\n"
 		"  -i     specify pathnames to include on path events\n"
+		"  -m     merge events on same file and pid in same second\n"
 		"  -n     no stats, just -v verbose mode only.\n"
 		"  -p PID collect stats for just process with pid PID\n"
 		"  -P     sort stats by process ID\n"
@@ -979,7 +1072,7 @@ int main(int argc, char **argv)
 	struct timeval tv1, tv2;
 
 	for (;;) {
-		int c = getopt(argc, argv, "hvdt:p:PcTsi:x:n");
+		int c = getopt(argc, argv, "hvdt:p:PcTsi:x:nmM");
 		if (c == -1)
 			break;
 		switch (c) {
@@ -995,6 +1088,9 @@ int main(int argc, char **argv)
 		case 'i':
 			if (parse_pathname_list(optarg, &paths_include))
 				exit(EXIT_FAILURE);
+			break;
+		case 'm':
+			opt_flags |= OPT_MERGE;
 			break;
 		case 'n':
 			opt_flags |= (OPT_NOSTATS | OPT_VERBOSE);
@@ -1147,8 +1243,12 @@ int main(int argc, char **argv)
 			file_stat_dump(duration, top);
 	}
 
+	/* Flush and free previous event */
+	fnotify_event_show(NULL, NULL, 0);
+
 	(void)close(fan_fd);
 	free(buffer);
+	file_stat_free();
 	proc_info_free();
 	proc_list_free(&proc_list);
 	pathname_list_free(&paths_include);

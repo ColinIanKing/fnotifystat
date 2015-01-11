@@ -49,6 +49,9 @@ pathnames to include in filename activity. By defualt, all mounted filesystems a
 may produce to much information.  The \-i option allows one to provide a comma separated list of just the
 specific paths to monitor.
 .TP
+.B \-m
+merge events. The default \-v verbose output will show all new events that fanotify detects on a file by a specific process. The \-m option will merge all consecutive events that occur on the same file from the same process to reduce the amount of event output.
+.TP
 .B \-n
 no periodic statistics, just verbose mode only.  Do not display periodic file activity statistics, but just show the verbose
 mode \-v file activity.
