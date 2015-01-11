@@ -1097,7 +1097,7 @@ void show_usage(void)
 		"  -i     specify pathnames to include on path events\n"
 		"  -I     order stats by unique device and inode\n"
 		"  -m     merge events on same file and pid in same second\n"
-		"  -n     no stats, just -v verbose mode only.\n"
+		"  -n     no stats, just -v verbose mode only\n"
 		"  -p PID collect stats for just process with pid PID\n"
 		"  -P     sort stats by process ID\n"
 		"  -s     disable scaling of file counts\n"
