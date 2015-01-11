@@ -76,7 +76,6 @@ show timestamp
 .B \-v
 verbose mode, dump all file activity. This will display the following file access information:
 .TS
-left;
 l.
 Date (in DD/MM/YY format)
 Time (in HH:MM:SS format)
@@ -85,9 +84,10 @@ Access type, O=Open, C=Close, R=Read, W=Write
 Process ID
 Process Name
 Name of accessed file
-.br
-Note that the names of deleted filenames cannot be determined and are flagged by the "(deleted)" tag.
 .TE
+.br
+
+Note that the names of deleted filenames cannot be determined and are flagged by the "(deleted)" tag.
 .TP
 .B \-x
 pathnames to exclude from filename activity. By defualt, all mounted filesystems are monitored, however, this
