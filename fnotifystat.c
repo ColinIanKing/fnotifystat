@@ -52,6 +52,8 @@
 #define OPT_SCALE		(0x00000040)	/* scale data */
 #define OPT_NOSTATS		(0x00000080)	/* No stats mode */
 #define OPT_MERGE		(0x00000100)	/* Merge events */
+#define OPT_DEVICE		(0x00000200)	/* Stats by mount */
+#define OPT_INODE		(0x00000400)	/* Filenames by inode, dev */
 
 #define PROC_CACHE_LIFE		(120)		/* Refresh cached pid info timeout */
 
@@ -664,24 +666,47 @@ static char *fnotify_get_filename(const pid_t pid, const int fd)
 
 	len = readlink(buf, path, sizeof(path));
 	if (len < 0) {
-		struct stat statbuf;
-		if (fstat(fd, &statbuf) < 0)
-			filename = strdup("(unknown)");
-		else {
-			snprintf(buf, sizeof(buf), "dev: %i:%i inode %ld",
-				major(statbuf.st_dev), minor(statbuf.st_dev), statbuf.st_ino);
+		filename = strdup("(unknown)");
+	} else {
+		if (opt_flags & OPT_INODE) {
+			struct stat statbuf;
+
+			if (fstat(fd, &statbuf) < 0) {
+				snprintf(buf, sizeof(buf), "%-10.10s %11s",
+					"(?:?)", "?");
+			} else {
+				char dev[32];
+				snprintf(dev, sizeof(dev), "%u:%u",
+					major(statbuf.st_dev),
+					minor(statbuf.st_dev));
+				snprintf(buf, sizeof(buf), "%-10.10s %11lu",
+					dev,
+					statbuf.st_ino);
+			}
 			filename = strdup(buf);
 		}
-	} else {
-		/*
-		 *  In an ideal world we should allocate the path
-		 *  based on a lstat'd size, but because this can be
-		 *  racey on has to re-check, which involves
-		 *  re-allocing the buffer.  Since we need to be
-		 *  fast let's just fetch up to PATH_MAX-1 of data.
-		 */
-		path[len >= PATH_MAX ? PATH_MAX - 1 : len] = '\0';
-		filename = strdup(path);
+		else if (opt_flags & OPT_DEVICE) {
+			struct stat statbuf;
+
+			if (fstat(fd, &statbuf) < 0) {
+				snprintf(buf, sizeof(buf), "?:?");
+			} else {
+				snprintf(buf, sizeof(buf), "%u:%u",
+					major(statbuf.st_dev),
+					minor(statbuf.st_dev));
+			}
+			filename = strdup(buf);
+		} else {
+			/*
+			 *  In an ideal world we should allocate the path
+			 *  based on a lstat'd size, but because this can be
+			 *  racey on has to re-check, which involves
+			 *  re-allocing the buffer.  Since we need to be
+			 *  fast let's just fetch up to PATH_MAX-1 of data.
+			 */
+			path[len >= PATH_MAX ? PATH_MAX - 1 : len] = '\0';
+			filename = strdup(path);
+		}
 	}
 	return filename;
 }
@@ -921,7 +946,9 @@ static void file_stat_dump(const double duration, const unsigned long top)
 	} else {
 		*ts = '\0';
 	}
-	printf(" Total   Open  Close   Read  Write  PID  Process         Pathname%s\n", ts);
+	printf(" Total   Open  Close   Read  Write  PID  Process         %s%s\n",
+		opt_flags & OPT_INODE ? "Dev (Maj:Min) Inode" :
+		opt_flags & OPT_DEVICE ? "Dev (Maj:Min)" : "Pathname", ts);
 	for (j = 0; j < file_stats_size; j++) {
 		if (top && j <= top) {
 			char buf[5][32];
@@ -1065,8 +1092,10 @@ void show_usage(void)
 	printf("Options are:\n"
 		"  -c     cumulative totals over time\n"
 		"  -d     strip directory off the filenames\n"
+		"  -D     order stats by unique device\n"
 		"  -h     show this help\n"
 		"  -i     specify pathnames to include on path events\n"
+		"  -I     order stats by unique device and inode\n"
 		"  -m     merge events on same file and pid in same second\n"
 		"  -n     no stats, just -v verbose mode only.\n"
 		"  -p PID collect stats for just process with pid PID\n"
@@ -1090,7 +1119,7 @@ int main(int argc, char **argv)
 	struct timeval tv1, tv2;
 
 	for (;;) {
-		int c = getopt(argc, argv, "hvdt:p:PcTsi:x:nmM");
+		int c = getopt(argc, argv, "hvdt:p:PcTsi:x:nmMDI");
 		if (c == -1)
 			break;
 		switch (c) {
@@ -1100,12 +1129,18 @@ int main(int argc, char **argv)
 		case 'd':
 			opt_flags |= OPT_DIRNAME_STRIP;
 			break;
+		case 'D':
+			opt_flags |= OPT_DEVICE;
+			break;
 		case 'h':
 			show_usage();
 			exit(EXIT_SUCCESS);
 		case 'i':
 			if (parse_pathname_list(optarg, &paths_include))
 				exit(EXIT_FAILURE);
+			break;
+		case 'I':
+			opt_flags |= OPT_INODE;
 			break;
 		case 'm':
 			opt_flags |= OPT_MERGE;
@@ -1175,6 +1210,12 @@ int main(int argc, char **argv)
 			fprintf(stderr, "Count must be > 0\n");
 			exit(EXIT_FAILURE);
 		}
+	}
+
+	if ((opt_flags & (OPT_INODE | OPT_DEVICE)) ==
+	    (OPT_INODE | OPT_DEVICE)) {
+		fprintf(stderr, "Cannot have -I and -D enabled together.\n");
+		exit(EXIT_FAILURE);
 	}
 
 	if ((getuid() != 0) || (geteuid() != 0)) {

@@ -41,20 +41,23 @@ dump cumulative totals over all time rather than totals over each sample period.
 .B \-d
 strip full directory path off the filenames.
 .TP
+.B \-D
+order statistics by unique device.  Rather than ordering periodic statistics by unique filename, instead order them by unique device (major, minor) number.  This allows one to see file activity on a per device basis.
+.TP
 .B \-h
 show help
 .TP
 .B \-i
-pathnames to include in filename activity. By defualt, all mounted filesystems are monitored, however, this
-may produce to much information.  The \-i option allows one to provide a comma separated list of just the
-specific paths to monitor.
+pathnames to include in filename activity. By defualt, all mounted filesystems are monitored, however, this may produce to much information.  The \-i option allows one to provide a comma separated list of just the specific paths to monitor.
+.TP
+.B \-I
+order statistics by unique device and inode.  Rather than ordering periodic statistics by unique filename, instead order them by unique device (major, minor) and inode number.
 .TP
 .B \-m
 merge events. The default \-v verbose output will show all new events that fanotify detects on a file by a specific process. The \-m option will merge all consecutive events that occur on the same file from the same process to reduce the amount of event output.
 .TP
 .B \-n
-no periodic statistics, just verbose mode only.  Do not display periodic file activity statistics, but just show the verbose
-mode \-v file activity.
+no periodic statistics, just verbose mode only.  Do not display periodic file activity statistics, but just show the verbose mode \-v file activity.
 .TP
 .B \-p proclist
 monitor specific processes. proclist is a comma separated list of process IDs or process names to monitor.
@@ -63,9 +66,7 @@ monitor specific processes. proclist is a comma separated list of process IDs or
 sort stats by pid first, then by totals and filename
 .TP
 .B \-s
-turn off data scaling. By default the read, write, open and close counts are displayed by scaling by multiple of
-thousands with suffixes of K (thousands), M (millions), B (billions).  The \-s option disables this, resulting in
-less aesthetically pleasing unaligned columns of data.
+turn off data scaling. By default the read, write, open and close counts are displayed by scaling by multiple of thousands with suffixes of K (thousands), M (millions), B (billions).  The \-s option disables this, resulting in less aesthetically pleasing unaligned columns of data.
 .TP
 .B \-t N
 only display the top busiest N files.
@@ -90,10 +91,7 @@ Name of accessed file
 Note that the names of deleted filenames cannot be determined and are flagged by the "(deleted)" tag.
 .TP
 .B \-x
-pathnames to exclude from filename activity. By defualt, all mounted filesystems are monitored, however, this
-may produce to much information.  The \-x option allows one to provide a comma separated list of pathnames to
-exclude.  Matching is performed on partial pathnames, for example \-x /pro will exclude all paths starting with
-/pro, such as /proc.
+pathnames to exclude from filename activity. By defualt, all mounted filesystems are monitored, however, this may produce to much information.  The \-x option allows one to provide a comma separated list of pathnames to exclude.  Matching is performed on partial pathnames, for example \-x /pro will exclude all paths starting with /pro, such as /proc.
 .TP
 .B SIGUSR1
 Sending SIGUSR1 to fnotifystat will toggle the verbose option (\-v) on/off.
@@ -131,5 +129,4 @@ sudo fnotifystat \-n \-i /sys,/proc
 .SH AUTHOR
 fnotifystat was written by Colin King <colin.king@canonical.com>
 .PP
-This manual page was written by Colin King <colin.king@canonical.com>,
-for the Ubuntu project (but may be used by others).
+This manual page was written by Colin King <colin.king@canonical.com>, for the Ubuntu project (but may be used by others).
