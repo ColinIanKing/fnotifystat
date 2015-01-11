@@ -1217,7 +1217,7 @@ int main(int argc, char **argv)
 		if (gettimeofday(&tv1, NULL) < 0)
 			pr_error("gettimeofday failed");
 
-		for (;;) {
+		while(!stop_fnotifystat) {
 			fd_set rfds;
 			int ret;
 			double remaining;
@@ -1249,7 +1249,7 @@ int main(int argc, char **argv)
 				metadata = (struct fanotify_event_metadata *)buffer;
 
 				while (FAN_EVENT_OK(metadata, len)) {
-					if (fnotify_event_add(metadata) < 0)
+					if (stop_fnotifystat || fnotify_event_add(metadata) < 0)
 						break;
 					metadata = FAN_EVENT_NEXT(metadata, len);
 				}
