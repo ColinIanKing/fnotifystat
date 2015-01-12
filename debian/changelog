@@ -1,3 +1,15 @@
+fnotifystat (0.01.09-1) unstable; urgency=medium
+
+  * Initial Debian release (Closes: #775219)
+  * Makefile: bump version
+  * Make -c stats divide by 1.0 rather than duration
+  * Clean up the stats output headings
+  * Add more information about the stats output
+  * Add -f option
+  * Remove extraneous . after -n option in help
+
+ -- Colin King <colin.king@canonical.com>  Mon, 12 Jan 2015 17:40:00 +0000
+
 fnotifystat (0.01.08-1) unstable; urgency=medium
 
   * Makefile: bump version
