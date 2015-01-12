@@ -20,7 +20,7 @@ VERSION=0.01.09
 
 CFLAGS += -Wall -Wextra -DVERSION='"$(VERSION)"'
 
-BINDIR=/usr/bin
+BINDIR=/usr/sbin
 MANDIR=/usr/share/man/man8
 
 fnotifystat: fnotifystat.o
