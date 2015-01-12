@@ -1,3 +1,12 @@
+fnotifystat (0.01.10-1) unstable; urgency=medium
+
+  * Makefile bump version
+  * Replace fanotify to fnotifystat in man page
+  * Fix typo, Pathename --> Pathname in man page
+  * fnotifystat should be installed in /usr/sbin and not /usr/bin
+
+ -- Colin King <colin.king@canonical.com>  Mon, 12 Jan 2015 18:18:21 +0000
+
 fnotifystat (0.01.09-1) unstable; urgency=medium
 
   * Initial Debian release (Closes: #775219)
