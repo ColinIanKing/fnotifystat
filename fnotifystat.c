@@ -608,8 +608,6 @@ static int mark(int fan_fd, const char *pathname, int *count)
 static int fnotify_event_init(void)
 {
 	int fan_fd, count = 0;
-	FILE* mounts;
-	struct mntent* mount;
 
 	if ((fan_fd = fanotify_init(0, 0)) < 0)
 		pr_error("cannot initialize fanotify");
@@ -621,6 +619,9 @@ static int fnotify_event_init(void)
 			(void)mark(fan_fd, pi->pathname, &count);
 		}
 	} else {
+		FILE* mounts;
+		struct mntent* mount;
+
 		/* No paths given, do all mount points */
 		if ((mounts = setmntent("/proc/self/mounts", "r")) == NULL) {
 			(void)close(fan_fd);
