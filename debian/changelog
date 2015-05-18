@@ -1,3 +1,13 @@
+fnotifystat (0.01.11-1) unstable; urgency=medium
+
+  * Makefile: fix copyright dates, bump version
+  * Change scope of mount and mounts (fixes cppcheck style warnings)
+  * fnotifystat: clarify precedence on ternary operation (cppcheck style fix)
+  * Remove sig handling on SIGILL and SIGABRT
+  * Update man page, add in bullet points and copyright info
+
+ -- Colin King <colin.king@canonical.com>  Mon, 18 May 2015 14:48:00 +0100
+
 fnotifystat (0.01.10-1) unstable; urgency=medium
 
   * Makefile bump version
