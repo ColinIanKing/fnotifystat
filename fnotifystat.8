@@ -2,7 +2,7 @@
 .\" First parameter, NAME, should be all caps
 .\" Second parameter, SECTION, should be 1-8, maybe w/ subsection
 .\" other parameters are allowed: see man(7), man(1)
-.TH FNOTIFYSTAT 8 "January 10, 2014"
+.TH FNOTIFYSTAT 8 "May 18, 2015"
 .\" Please adjust this date whenever revising the manpage.
 .\"
 .\" Some roff macros, for reference:
@@ -35,21 +35,25 @@ Statistics are ouput 'count' many times before exiting. If count is not specifie
 Note that if no file activity has occured during a sample delay period then no new statistics are output. The \-f option will force output if desired.
 
 By default, fnotifystat will display the following statistics every sample 'delay' seconds:
-.TS
-l.
+.IP \[bu] 2
 Average number of opens, closes, reads and writes over the sample period
+.IP \[bu]
 Average number of opens over the sample period
+.IP \[bu]
 Average number of closes over the sample period
+.IP \[bu]
 Average number of reads over the sample period
+.IP \[bu]
 Average number of writes over the sample period
+.IP \[bu]
 Process ID
+.IP \[bu]
 Pathname
-.TE
 .br
-
+.TP
 The \-I option will display the device (major, minor) number and inode instead of the filename while the \-I option will just show the device (major, minor) number.
 .br
-
+.TP
 The \-c option will display the cumulative count of the open, close, read and writes rather than the averages.
 
 .SH OPTIONS
@@ -153,3 +157,8 @@ sudo fnotifystat \-n \-i /sys,/proc
 fnotifystat was written by Colin King <colin.king@canonical.com>
 .PP
 This manual page was written by Colin King <colin.king@canonical.com>, for the Ubuntu project (but may be used by others).
+.SH COPYRIGHT
+Copyright \(co 2011-2015 Canonical Ltd.
+.br
+This is free software; see the source for copying conditions.  There is NO
+warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
