@@ -954,8 +954,8 @@ static void file_stat_dump(const double duration, const unsigned long top)
 		*ts = '\0';
 	}
 	printf("Total   Open  Close   Read  Write   PID  Process         %s%s\n",
-		opt_flags & OPT_INODE ? "Dev (Maj:Min) Inode" :
-		opt_flags & OPT_DEVICE ? "Dev (Maj:Min)" : "Pathname", ts);
+		(opt_flags & OPT_INODE) ? "Dev (Maj:Min) Inode" :
+		(opt_flags & OPT_DEVICE) ? "Dev (Maj:Min)" : "Pathname", ts);
 	for (j = 0; j < file_stats_size; j++) {
 		if (top && j <= top) {
 			char buf[5][32];
