@@ -1,5 +1,5 @@
 #
-# Copyright (C) 2014 Canonical, Ltd.
+# Copyright (C) 2013-2015 Canonical, Ltd.
 #
 # This program is free software; you can redistribute it and/or
 # modify it under the terms of the GNU General Public License
@@ -16,7 +16,7 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
 #
 
-VERSION=0.01.10
+VERSION=0.01.11
 
 CFLAGS += -Wall -Wextra -DVERSION='"$(VERSION)"'
 
