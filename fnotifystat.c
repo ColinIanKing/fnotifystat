@@ -996,9 +996,9 @@ static void file_stat_dump(const double duration, const unsigned long top)
  */
 static int parse_pid_list(char *arg)
 {
-	char *str, *token, *saveptr = NULL;
+	char *str, *token;
 
-	for (str = arg; (token = strtok_r(str, ",", &saveptr)) != NULL; str = NULL) {
+	for (str = arg; (token = strtok(str, ",")) != NULL; str = NULL) {
 		pid_t pid = 0;
 		char *name = NULL;
 		proc_info_t *p;
