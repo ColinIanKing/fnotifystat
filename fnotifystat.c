@@ -345,33 +345,43 @@ static void pr_nomem(const char *msg)
  *  get_pid_cmdline
  * 	get process's /proc/pid/cmdline
  */
-static char *get_pid_cmdline(const pid_t id)
+static char *get_pid_cmdline(const pid_t pid)
 {
 	char buffer[BUFFER_SIZE];
 	char *ptr;
 	int fd;
-	ssize_t ret;
+	ssize_t ret = 0;
 
-	snprintf(buffer, sizeof(buffer), "/proc/%d/cmdline", id);
-
-	if ((fd = open(buffer, O_RDONLY)) < 0)
-		return strdup(CMD_UNKNOWN);
-
-	memset(buffer, 0, sizeof(buffer));
-	if ((ret = read(fd, buffer, sizeof(buffer))) <= 0) {
+	*buffer = '\0';
+	(void)snprintf(buffer, sizeof(buffer), "/proc/%d/cmdline", pid);
+	if ((fd = open(buffer, O_RDONLY)) > -1) {
+		ret = read(fd, buffer, sizeof(buffer) - 1);
 		(void)close(fd);
-		return strdup(CMD_UNKNOWN);
+		buffer[ret] = '\0';
 	}
-	(void)close(fd);
+	/*
+	 * No cmdline, could be a kernel thread, so get the comm
+	 * field instead
+	 */
+	if (!*buffer) {
+		(void)snprintf(buffer, sizeof(buffer), "/proc/%d/comm", pid);
+		if ((fd = open(buffer, O_RDONLY)) > -1) {
+			ret = read(fd, buffer, sizeof(buffer) - 1);
+			(void)close(fd);
+			if (ret)
+				buffer[ret - 1] = '\0';  /* remove trailing \n */
+		}
+	}
 
-	buffer[sizeof(buffer)-1] = '\0';
+	if (!ret)
+		strncpy(buffer, "<unknown>", sizeof(buffer));
+
 	for (ptr = buffer; *ptr && (ptr < buffer + ret); ptr++) {
 		if (*ptr == ' ') {
 			*ptr = '\0';
 			break;
 		}
 	}
-
 	return strdup(basename(buffer));
 }
 
@@ -440,7 +450,7 @@ static proc_info_t *proc_info_get(const pid_t pid)
 				/* It's probably died, so no new process name */
 				free(cmdline);
 				return pi;
-			} 
+			}
 			/* Deemed "stale", so refresh stats */
 			free(pi->cmdline);
 			pi->cmdline = cmdline;
