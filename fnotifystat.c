@@ -1047,10 +1047,10 @@ static int parse_pid_list(char *arg)
  */
 static int parse_pathname_list(char *arg, pathname_t **list)
 {
-	char *str, *token, *saveptr = NULL;
+	char *str, *token;
 	bool added = false;
 
-	for (str = arg; (token = strtok_r(str, ",", &saveptr)) != NULL; str = NULL) {
+	for (str = arg; (token = strtok(str, ",")) != NULL; str = NULL) {
 		pathname_t *p;
 
 		p = calloc(1, sizeof(pathname_t));
