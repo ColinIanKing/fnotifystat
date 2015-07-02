@@ -357,7 +357,8 @@ static char *get_pid_cmdline(const pid_t pid)
 	if ((fd = open(buffer, O_RDONLY)) > -1) {
 		ret = read(fd, buffer, sizeof(buffer) - 1);
 		(void)close(fd);
-		buffer[ret] = '\0';
+		if (ret > -1)
+			buffer[ret] = '\0';
 	}
 	/*
 	 * No cmdline, could be a kernel thread, so get the comm
@@ -368,18 +369,19 @@ static char *get_pid_cmdline(const pid_t pid)
 		if ((fd = open(buffer, O_RDONLY)) > -1) {
 			ret = read(fd, buffer, sizeof(buffer) - 1);
 			(void)close(fd);
-			if (ret)
+			if (ret > 0)
 				buffer[ret - 1] = '\0';  /* remove trailing \n */
 		}
 	}
 
-	if (!ret)
+	if (ret < 1) {
 		strncpy(buffer, "<unknown>", sizeof(buffer));
-
-	for (ptr = buffer; *ptr && (ptr < buffer + ret); ptr++) {
-		if (*ptr == ' ') {
-			*ptr = '\0';
-			break;
+	} else {
+		for (ptr = buffer; *ptr && (ptr < buffer + ret); ptr++) {
+			if (*ptr == ' ') {
+				*ptr = '\0';
+				break;
+			}
 		}
 	}
 	return strdup(basename(buffer));
