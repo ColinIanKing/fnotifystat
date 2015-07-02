@@ -396,25 +396,19 @@ static inline double timeval_double(const struct timeval *tv)
 }
 
 /*
- *  hash_pjw()
- *	Hash a string, from Aho, Sethi, Ullman, Compiling Techniques.
+ *  hash_djb2a()
+ *	Hash a string, from Dan Bernstein comp.lang.c (xor version)
  */
-static unsigned long hash_pjw(const char *str, const pid_t pid)
+static uint32_t hash_djb2a(const char *str, const pid_t pid)
 {
-  	unsigned long h = pid;
+	register uint32_t hash = 5381 + pid;
+	register int c;
 
-	while (*str) {
-		unsigned long g;
-
-		h = (h << 4) + (*str);
-		if (0 != (g = h & 0xf0000000)) {
-			h = h ^ (g >> 24);
-			h = h ^ g;
-		}
-		str++;
+	while ((c = *str++)) {
+		/* (hash * 33) ^ c */
+		hash = ((hash << 5) + hash) ^ c;
 	}
-
-  	return h % TABLE_SIZE;
+	return hash % TABLE_SIZE;
 }
 
 /*
@@ -552,7 +546,7 @@ static void file_stat_free(void)
  */
 static file_stat_t *file_stat_get(const char *str, const pid_t pid)
 {
-	const unsigned long h = hash_pjw(str, pid);
+	const unsigned long h = hash_djb2a(str, pid);
 	file_stat_t *fs = file_stats[h];
 
 	while (fs) {
