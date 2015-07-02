@@ -582,21 +582,41 @@ static file_stat_t *file_stat_get(const char *str, const pid_t pid)
 	return fs;
 }
 
+
+/*
+ *  filter_out()
+ *	return true if pathname is excluded and not included
+ *	- excludes takes higher priority over includes
+ */
+static bool filter_out(const char *pathname)
+{
+	pathname_t *pe;
+
+	/* Check if pathname is on exclude list */
+	for (pe = paths_exclude; pe; pe = pe->next) {
+		if (!strncmp(pe->pathname, pathname, pe->pathlen))
+			return true;
+	}
+	/* No include list, assume include all */
+	if (!paths_include)
+		return false;
+
+	/* Check if pathname is on the include list */
+	for (pe = paths_include; pe; pe = pe->next) {
+		if (!strncmp(pe->pathname, pathname, pe->pathlen))
+			return false;
+	}
+	return true;
+}
+
 /*
  *  mark()
- *	add a new fanotify mask if filename not in
- *	exclude list and increment the counter
+ *	add a new fanotify mask
  */
 static int mark(int fan_fd, const char *pathname, int *count)
 {
-	pathname_t *pe;
 	int ret;
 
-	/* Check if pathname is not on exclude list */
-	for (pe = paths_exclude; pe; pe = pe->next) {
-		if (!strncmp(pe->pathname, pathname, pe->pathlen))
-			return 0;
-	}
 	ret = fanotify_mark(fan_fd, FAN_MARK_ADD | FAN_MARK_MOUNT,
 		FAN_ACCESS| FAN_MODIFY | FAN_OPEN | FAN_CLOSE |
 		FAN_ONDIR | FAN_EVENT_ON_CHILD, AT_FDCWD, pathname);
@@ -618,31 +638,23 @@ static int fnotify_event_init(void)
 	if ((fan_fd = fanotify_init(0, 0)) < 0)
 		pr_error("cannot initialize fanotify");
 
-	if (paths_include) {
-		pathname_t *pi;
+	FILE* mounts;
+	struct mntent* mount;
 
-		for (pi = paths_include; pi; pi = pi->next) {
-			(void)mark(fan_fd, pi->pathname, &count);
-		}
-	} else {
-		FILE* mounts;
-		struct mntent* mount;
+	/* No paths given, do all mount points */
+	if ((mounts = setmntent("/proc/self/mounts", "r")) == NULL) {
+		(void)close(fan_fd);
+		pr_error("setmntent cannot get mount points from /proc/self/mounts");
+	}
+	/*
+	 *  Gather all mounted file systems and monitor them
+	 */
+	while ((mount = getmntent(mounts)) != NULL)
+		(void)mark(fan_fd, mount->mnt_dir, &count);
 
-		/* No paths given, do all mount points */
-		if ((mounts = setmntent("/proc/self/mounts", "r")) == NULL) {
-			(void)close(fan_fd);
-			pr_error("setmntent cannot get mount points from /proc/self/mounts");
-		}
-		/*
-		 *  Gather all mounted file systems and monitor them
-		 */
-		while ((mount = getmntent(mounts)) != NULL)
-			(void)mark(fan_fd, mount->mnt_dir, &count);
-
-		if (endmntent(mounts) < 0) {
-			(void)close(fan_fd);
-			pr_error("endmntent failed");
-		}
+	if (endmntent(mounts) < 0) {
+		(void)close(fan_fd);
+		pr_error("endmntent failed");
 	}
 
 	/* This really should not happen, / is always mounted */
@@ -651,7 +663,6 @@ static int fnotify_event_init(void)
 		(void)close(fan_fd);
 		exit(EXIT_FAILURE);
 	}
-
 	return fan_fd;
 }
 
@@ -858,9 +869,11 @@ static int fnotify_event_add(const struct fanotify_event_metadata *metadata)
 
  	filename = fnotify_get_filename(-1, metadata->fd);
 	if (filename == NULL) {
-		(void)close(metadata->fd);
 		pr_error("allocating fnotify filename");
+		goto tidy;
 	}
+	if (filter_out(filename))
+		goto tidy;
 
 	fs = file_stat_get(filename, metadata->pid);
 	if (metadata->mask & FAN_OPEN) {

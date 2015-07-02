@@ -75,7 +75,7 @@ order statistics by unique device.  Rather than ordering periodic statistics by 
 show help
 .TP
 .B \-i
-pathnames to include in filename activity. By defualt, all mounted filesystems are monitored, however, this may produce to much information.  The \-i option allows one to provide a comma separated list of just the specific paths to monitor.
+pathnames to include in filename activity. By default, all mounted filesystems are monitored, however, this may produce to much information.  The \-i option allows one to provide a comma separated list of just the specific paths to monitor.
 .TP
 .B \-I
 order statistics by unique device and inode.  Rather than ordering periodic statistics by unique filename, instead order them by unique device (major, minor) and inode number.
@@ -118,7 +118,7 @@ Name of accessed file
 Note that the names of deleted filenames cannot be determined and are flagged by the "(deleted)" tag.
 .TP
 .B \-x
-pathnames to exclude from filename activity. By defualt, all mounted filesystems are monitored, however, this may produce to much information.  The \-x option allows one to provide a comma separated list of pathnames to exclude.  Matching is performed on partial pathnames, for example \-x /pro will exclude all paths starting with /pro, such as /proc.
+pathnames to exclude from filename activity. By default, all mounted filesystems are monitored, however, this may produce to much information.  The \-x option allows one to provide a comma separated list of pathnames to exclude.  Matching is performed on partial pathnames, for example \-x /pro will exclude all paths starting with /pro, such as /proc.  Note that excluding a file with \-x takes higher precedence over including a file with \-i.
 .TP
 .B SIGUSR1
 Sending SIGUSR1 to fnotifystat will toggle the verbose option (\-v) on/off.
