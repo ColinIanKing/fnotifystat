@@ -18,7 +18,7 @@
 
 VERSION=0.01.12
 
-CFLAGS += -Wall -Wextra -DVERSION='"$(VERSION)"' -g -O2
+CFLAGS += -Wall -Wextra -DVERSION='"$(VERSION)"' -O2
 
 BINDIR=/usr/sbin
 MANDIR=/usr/share/man/man8
