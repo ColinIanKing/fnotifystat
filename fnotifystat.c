@@ -167,9 +167,6 @@ static const int signals[] = {
 	-1,
 };
 
-static void pr_error(const char *msg) __attribute__ ((noreturn));
-static void pr_nomem(const char *msg) __attribute__ ((noreturn));
-
 /* Time scaling factors */
 static const scale_t time_scales[] = {
 	{ 's',  1 },
@@ -324,7 +321,7 @@ static void get_tm(struct tm *tm)
  *  pr_error()
  *	print error message and exit fatally
  */
-static void pr_error(const char *msg)
+static void __attribute__ ((noreturn)) pr_error(const char *msg)
 {
 	fprintf(stderr, "Fatal error: %s: errno=%d (%s)\n",
 		msg, errno, strerror(errno));
@@ -335,7 +332,7 @@ static void pr_error(const char *msg)
  *  pr_nomem()
  *	print out of memory error and exit fatally
  */
-static void pr_nomem(const char *msg)
+static void __attribute__ ((noreturn)) pr_nomem(const char *msg)
 {
 	fprintf(stderr, "Fatal error: out of memory: %s\n", msg);
 	exit(EXIT_FAILURE);
