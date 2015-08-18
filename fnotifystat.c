@@ -89,8 +89,8 @@ typedef struct pathname_t {
 
 /* scaling factor */
 typedef struct {
-	const uint64_t scale;			/* Amount to scale by */
 	const char ch;				/* Scaling suffix */
+	const uint64_t scale;			/* Amount to scale by */
 } scale_t;
 
 /* stashed context for verbose info */
