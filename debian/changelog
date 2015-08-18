@@ -1,3 +1,14 @@
+fnotifystat (0.01.13-1) unstable; urgency=medium
+
+  * Makefile: bump version
+  * Update compat to 9
+  * Switch fields back in scale_t
+  * Re-order items in struct for better memory packing
+  * Move noreturn attributes
+  * Remove -g option from CFLAGS
+
+ -- Colin King <colin.king@canonical.com>  Tue, 18 Aug 2015 12:15:00 -0700
+
 fnotifystat (0.01.12-1) unstable; urgency=medium
 
   * Makefile: bump version
