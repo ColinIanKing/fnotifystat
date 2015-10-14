@@ -1,3 +1,10 @@
+fnotifystat (0.01.14-1) unstable; urgency=medium
+
+  * Makefile: bump version
+  * Fix memory leak when filtering file paths (LP: #1506161)
+
+ -- Colin King <colin.king@canonical.com>  Wed, 14 Oct 2015 18:57:00 +0100
+
 fnotifystat (0.01.13-1) unstable; urgency=medium
 
   * Makefile: bump version
