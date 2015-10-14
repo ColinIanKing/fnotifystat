@@ -869,8 +869,10 @@ static int fnotify_event_add(const struct fanotify_event_metadata *metadata)
 		pr_error("allocating fnotify filename");
 		goto tidy;
 	}
-	if (filter_out(filename))
+	if (filter_out(filename)) {
+		free(filename);
 		goto tidy;
+	}
 
 	fs = file_stat_get(filename, metadata->pid);
 	if (metadata->mask & FAN_OPEN) {
