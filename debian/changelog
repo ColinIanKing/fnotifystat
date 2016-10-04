@@ -1,3 +1,12 @@
+fnotifystat (0.01.15-1) unstable; urgency=medium
+
+  * Makefile: bump version
+  * reduce scope of ptr
+  * debian/control: update Standards-Version to 3.9.8
+  * Update and correct copyright years
+
+ -- Colin King <colin.king@canonical.com>  Tue, 4 Oct 2016 09:52:42 +0100
+
 fnotifystat (0.01.14-1) unstable; urgency=medium
 
   * Makefile: bump version
