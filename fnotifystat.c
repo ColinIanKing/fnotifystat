@@ -345,7 +345,6 @@ static void __attribute__ ((noreturn)) pr_nomem(const char *msg)
 static char *get_pid_cmdline(const pid_t pid)
 {
 	char buffer[BUFFER_SIZE];
-	char *ptr;
 	int fd;
 	ssize_t ret = 0;
 
@@ -374,6 +373,8 @@ static char *get_pid_cmdline(const pid_t pid)
 	if (ret < 1) {
 		strncpy(buffer, "<unknown>", sizeof(buffer));
 	} else {
+		char *ptr;
+
 		for (ptr = buffer; *ptr && (ptr < buffer + ret); ptr++) {
 			if (*ptr == ' ') {
 				*ptr = '\0';
