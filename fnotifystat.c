@@ -1289,7 +1289,6 @@ int main(int argc, char **argv)
 
 		while(!stop_fnotifystat) {
 			fd_set rfds;
-			int ret;
 			double remaining;
 
 			if (gettimeofday(&tv2, NULL) < 0)
