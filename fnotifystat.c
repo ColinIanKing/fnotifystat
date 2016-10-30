@@ -912,8 +912,8 @@ tidy:
  */
 static int file_stat_cmp(const void *p1, const void *p2)
 {
-	file_stat_t **fs1 = (file_stat_t **)p1;
-	file_stat_t **fs2 = (file_stat_t **)p2;
+	file_stat_t *const *fs1 = (file_stat_t *const *)p1;
+	file_stat_t *const *fs2 = (file_stat_t *const *)p2;
 
 	if (opt_flags & OPT_SORT_BY_PID) {
 		if ((*fs1)->pid < (*fs2)->pid)
