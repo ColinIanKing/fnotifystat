@@ -910,7 +910,7 @@ tidy:
  *	compare file stats, sort by total and if they are
  *	the same, sort by pathname
  */
-int file_stat_cmp(const void *p1, const void *p2)
+static int file_stat_cmp(const void *p1, const void *p2)
 {
 	file_stat_t **fs1 = (file_stat_t **)p1;
 	file_stat_t **fs2 = (file_stat_t **)p2;
@@ -1113,7 +1113,7 @@ static void pathname_list_free(pathname_t **list)
  *  show_usage()
  *	how to use
  */
-void show_usage(void)
+static void show_usage(void)
 {
 	printf("%s, version %s\n\n", app_name, VERSION);
 	printf("Options are:\n"
