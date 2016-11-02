@@ -1,3 +1,13 @@
+fnotifystat (0.01.16-1) unstable; urgency=medium
+
+  * Makefile: bump version
+  * Remove extraneous declaration of ret to fix shadowing
+  * constify fs1 fs2
+  * Make some helper functions static
+  * Makefile: add PEDANTIC flags
+
+ -- Colin King <colin.king@canonical.com>  Wed, 2 Nov 2016 13:14:15 -0600
+
 fnotifystat (0.01.15-1) unstable; urgency=medium
 
   * Makefile: bump version
