@@ -178,6 +178,42 @@ static const scale_t time_scales[] = {
 };
 
 /*
+ *  pid_max_digits()
+ *	determine (or guess) maximum digits of pids
+ */
+static int pid_max_digits(void)
+{
+	static int max_digits;
+	ssize_t n;
+	int fd;
+	const int default_digits = 6;
+	const int min_digits = 5;
+	char buf[32];
+
+	if (max_digits)
+		goto ret;
+
+	max_digits = default_digits;
+	fd = open("/proc/sys/kernel/pid_max", O_RDONLY);
+	if (fd < 0)
+		goto ret;
+	n = read(fd, buf, sizeof(buf) - 1);
+	(void)close(fd);
+	if (n < 0)
+		goto ret;
+
+	buf[n] = '\0';
+	max_digits = 0;
+	while (buf[max_digits] >= '0' && buf[max_digits] <= '9')
+		max_digits++;
+	if (max_digits < min_digits)
+		max_digits = min_digits;
+ret:
+	return max_digits;
+
+}
+
+/*
  *  handle_siginfo()
  *      catch SIGUSR1, toggle verbose mode
  */
@@ -767,6 +803,7 @@ static void fnotify_event_show(
 	struct tm tm;
 	static stash_info_t previous;
 	char str[64];
+	int pid_size;
 
 	if (!(opt_flags & OPT_VERBOSE)) {
 		free(filename);
@@ -804,17 +841,20 @@ static void fnotify_event_show(
 		return;
 	}
 
+	pid_size = pid_max_digits();
+
 	/*
 	 *  Event for a different file and process has come in
 	 *  so flush out old..
 	 */
 	count_to_str((double)previous.count, str, sizeof(str));
-	printf("%2.2d/%2.2d/%-2.2d %2.2d:%2.2d:%2.2d %s (%4.4s) %5d %-15.15s %s\n",
+	printf("%2.2d/%2.2d/%-2.2d %2.2d:%2.2d:%2.2d %s (%4.4s) %*d %-15.15s %s\n",
 		previous.tm.tm_mday, previous.tm.tm_mon + 1, (previous.tm.tm_year+1900) % 100,
 		previous.tm.tm_hour, previous.tm.tm_min, previous.tm.tm_sec,
 		str,
 		fnotify_mask_to_str(previous.mask),
-		previous.fs->pid, proc_info_get(previous.fs->pid)->cmdline,
+		pid_size, previous.fs->pid,
+		proc_info_get(previous.fs->pid)->cmdline,
 		(opt_flags & OPT_DIRNAME_STRIP) ?
 			basename(previous.filename) : previous.filename);
 
@@ -941,6 +981,7 @@ static void file_stat_dump(const double duration, const unsigned long top)
 	uint64_t i, j;
 	char ts[32];
 	double dur = (opt_flags & OPT_CUMULATIVE) ? 1.0 : duration;
+	int pid_size;
 
 	if (!(opt_flags & OPT_FORCE) && !file_stats_size)
 		return;
@@ -972,20 +1013,22 @@ static void file_stat_dump(const double duration, const unsigned long top)
 	} else {
 		*ts = '\0';
 	}
-	printf("Total   Open  Close   Read  Write   PID  Process         %s%s\n",
+	pid_size = pid_max_digits();
+	printf("Total   Open  Close   Read  Write %*.*s  Process         %s%s\n",
+		pid_size, pid_size, "PID",
 		(opt_flags & OPT_INODE) ? "Dev (Maj:Min) Inode" :
 		(opt_flags & OPT_DEVICE) ? "Dev (Maj:Min)" : "Pathname", ts);
 	for (j = 0; j < file_stats_size; j++) {
 		if (top && j <= top) {
 			char buf[5][32];
 
-			printf("%s %s %s %s %s %5d %-15.15s %s\n",
+			printf("%s %s %s %s %s %*d %-15.15s %s\n",
 				count_to_str(sorted[j]->total / dur, buf[0], sizeof(buf[0])),
 				count_to_str(sorted[j]->open / dur, buf[1], sizeof(buf[1])),
 				count_to_str(sorted[j]->close / dur, buf[2], sizeof(buf[2])),
 				count_to_str(sorted[j]->read/ dur, buf[3], sizeof(buf[3])),
 				count_to_str(sorted[j]->write / dur, buf[4], sizeof(buf[4])),
-				sorted[j]->pid,
+				pid_size, sorted[j]->pid,
 				proc_info_get(sorted[j]->pid)->cmdline,
 				(opt_flags & OPT_DIRNAME_STRIP) ?
 					basename(sorted[j]->path) : sorted[j]->path);
