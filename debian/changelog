@@ -1,3 +1,13 @@
+fnotifystat (0.01.17-1) unstable; urgency=medium
+
+  * Makefile: bump version
+  * Manual: update copyright year and date
+  * Add variable pid size handling.
+  * Re-order declarations of mounts and mount in fnotify_event_init
+  * Update copyright year to source
+
+ -- Colin King <colin.king@canonical.com>  Fri, 14 Apr 2017 17:15:13 +0100
+
 fnotifystat (0.01.16-1) unstable; urgency=medium
 
   * Makefile: bump version
