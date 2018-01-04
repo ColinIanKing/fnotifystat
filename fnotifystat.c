@@ -38,6 +38,7 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <sys/time.h>
+#include <sys/sysmacros.h>
 #include <sys/types.h>
 
 #define TABLE_SIZE		(17627)		/* Best if prime */
