@@ -1,3 +1,13 @@
+fnotifystat (0.02.00-1) unstable; urgency=medium
+
+  * Makefile: bump version to 0.02.00
+  * debian/rules: remove extraneous space on line 5
+  * debian/control: update Standards-Version to 4.1.2
+  * unconsitfy pointer 'metadata' to fix a build warning
+  * Fix build warning, include <sys/sysmacros.h>.
+
+ -- Colin King <colin.king@canonical.com>  Thu, 4 Jan 2018 23:24:25 +0000
+
 fnotifystat (0.01.17-1) unstable; urgency=medium
 
   * Makefile: bump version
@@ -183,6 +193,6 @@ fnotifystat (0.01.01-1) unstable; urgency=medium
 
 fnotifystat (0.01.00-1) unstable; urgency=low
 
-  * Initial version 
+  * Initial version
 
  -- Colin King <colin.king@canonical.com>  Thu, 2 Oct 2014 17:26:00 +0000
