@@ -1,3 +1,15 @@
+fnotifystat (0.02.01-1) unstable; urgency=medium
+
+  * Makefile: bump version
+  * debian/copyright: use secure URI
+  * debian/control: update dephelper to >= 11
+  * debian/control: remove trailing empty line
+  * debian/compat: update to 11
+  * voidify unused function returns
+  * Update copyright year
+
+ -- Colin King <colin.king@canonical.com>  Sun, 17 Jun 2018 13:14:15 +0100
+
 fnotifystat (0.02.00-1) unstable; urgency=medium
 
   * Makefile: bump version to 0.02.00
