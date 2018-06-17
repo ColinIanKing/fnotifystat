@@ -237,11 +237,11 @@ static double get_double(const char *const str, size_t *const len)
 	errno = 0;
 	val = strtod(str, NULL);
 	if (errno) {
-		fprintf(stderr, "Invalid value %s.\n", str);
+		(void)fprintf(stderr, "Invalid value %s.\n", str);
 		exit(EXIT_FAILURE);
 	}
 	if (*len == 0) {
-		fprintf(stderr, "Value %s is an invalid size.\n", str);
+		(void)fprintf(stderr, "Value %s is an invalid size.\n", str);
 		exit(EXIT_FAILURE);
 	}
 	return val;
@@ -266,7 +266,7 @@ static double get_double_scale(
 	ch = str[len];
 
 	if (val < 0.0) {
-		printf("Value %s cannot be negative\n", str);
+		(void)printf("Value %s cannot be negative\n", str);
 		exit(EXIT_FAILURE);
 	}
 
@@ -279,7 +279,7 @@ static double get_double_scale(
 			return val * scales[i].scale;
 	}
 
-	printf("Illegal %s specifier %c\n", msg, str[len]);
+	(void)printf("Illegal %s specifier %c\n", msg, str[len]);
 	exit(EXIT_FAILURE);
 }
 
@@ -311,9 +311,9 @@ static char *count_to_str(
 			if (v <= 500)
 				break;
 		}
-		snprintf(buf, buflen, "%5.1f%c", v, scales[i]);
+		(void)snprintf(buf, buflen, "%5.1f%c", v, scales[i]);
 	} else {
-		snprintf(buf, buflen, "%6.1f", v);
+		(void)snprintf(buf, buflen, "%6.1f", v);
 	}
 
 	return buf;
@@ -348,7 +348,7 @@ static void get_tm(struct tm *tm)
 	time_t now = time(NULL);
 
 	if (now == ((time_t) -1)) {
-		memset(tm, 0, sizeof(struct tm));
+		(void)memset(tm, 0, sizeof(struct tm));
 	} else {
 		(void)localtime_r(&now, tm);
 	}
@@ -360,7 +360,7 @@ static void get_tm(struct tm *tm)
  */
 static void __attribute__ ((noreturn)) pr_error(const char *msg)
 {
-	fprintf(stderr, "Fatal error: %s: errno=%d (%s)\n",
+	(void)fprintf(stderr, "Fatal error: %s: errno=%d (%s)\n",
 		msg, errno, strerror(errno));
 	exit(EXIT_FAILURE);
 }
@@ -371,7 +371,7 @@ static void __attribute__ ((noreturn)) pr_error(const char *msg)
  */
 static void __attribute__ ((noreturn)) pr_nomem(const char *msg)
 {
-	fprintf(stderr, "Fatal error: out of memory: %s\n", msg);
+	(void)fprintf(stderr, "Fatal error: out of memory: %s\n", msg);
 	exit(EXIT_FAILURE);
 }
 
@@ -408,7 +408,7 @@ static char *get_pid_cmdline(const pid_t pid)
 	}
 
 	if (ret < 1) {
-		strncpy(buffer, "<unknown>", sizeof(buffer));
+		(void)strncpy(buffer, "<unknown>", sizeof(buffer));
 	} else {
 		char *ptr;
 
@@ -522,7 +522,7 @@ static void proc_info_get_all(void)
 
 	dir = opendir("/proc");
 	if (dir == NULL) {
-		fprintf(stderr, "Cannot open /proc, is it mounted?\n");
+		(void)fprintf(stderr, "Cannot open /proc, is it mounted?\n");
 		exit(EXIT_FAILURE);
 	}
 	while ((dirp = readdir(dir)) != NULL) {
@@ -531,7 +531,7 @@ static void proc_info_get_all(void)
 			(void)proc_info_get(pid);
 		}
 	}
-	closedir(dir);
+	(void)closedir(dir);
 }
 
 /*
@@ -693,7 +693,7 @@ static int fnotify_event_init(void)
 
 	/* This really should not happen, / is always mounted */
 	if (!count) {
-		fprintf(stderr, "no mount points could be monitored\n");
+		(void)fprintf(stderr, "no mount points could be monitored\n");
 		(void)close(fan_fd);
 		exit(EXIT_FAILURE);
 	}
@@ -730,14 +730,15 @@ static char *fnotify_get_filename(const pid_t pid, const int fd)
 			struct stat statbuf;
 
 			if (fstat(fd, &statbuf) < 0) {
-				snprintf(buf, sizeof(buf), "%-10.10s %11s",
+				(void)snprintf(buf, sizeof(buf), "%-10.10s %11s",
 					"(?:?)", "?");
 			} else {
 				char dev[32];
-				snprintf(dev, sizeof(dev), "%u:%u",
+
+				(void)snprintf(dev, sizeof(dev), "%u:%u",
 					major(statbuf.st_dev),
 					minor(statbuf.st_dev));
-				snprintf(buf, sizeof(buf), "%-10.10s %11lu",
+				(void)snprintf(buf, sizeof(buf), "%-10.10s %11lu",
 					dev,
 					statbuf.st_ino);
 			}
@@ -747,9 +748,9 @@ static char *fnotify_get_filename(const pid_t pid, const int fd)
 			struct stat statbuf;
 
 			if (fstat(fd, &statbuf) < 0) {
-				snprintf(buf, sizeof(buf), "?:?");
+				(void)snprintf(buf, sizeof(buf), "?:?");
 			} else {
-				snprintf(buf, sizeof(buf), "%u:%u",
+				(void)snprintf(buf, sizeof(buf), "%u:%u",
 					major(statbuf.st_dev),
 					minor(statbuf.st_dev));
 			}
@@ -849,7 +850,7 @@ static void fnotify_event_show(
 	 *  so flush out old..
 	 */
 	count_to_str((double)previous.count, str, sizeof(str));
-	printf("%2.2d/%2.2d/%-2.2d %2.2d:%2.2d:%2.2d %s (%4.4s) %*d %-15.15s %s\n",
+	(void)printf("%2.2d/%2.2d/%-2.2d %2.2d:%2.2d:%2.2d %s (%4.4s) %*d %-15.15s %s\n",
 		previous.tm.tm_mday, previous.tm.tm_mon + 1, (previous.tm.tm_year+1900) % 100,
 		previous.tm.tm_hour, previous.tm.tm_min, previous.tm.tm_sec,
 		str,
@@ -1008,14 +1009,14 @@ static void file_stat_dump(const double duration, const unsigned long top)
 		struct tm tm;
 
 		get_tm(&tm);
-		snprintf(ts, sizeof(ts), " [%2.2d/%2.2d/%-2.2d %2.2d:%2.2d:%2.2d]\n",
+		(void)snprintf(ts, sizeof(ts), " [%2.2d/%2.2d/%-2.2d %2.2d:%2.2d:%2.2d]\n",
 			tm.tm_mday, tm.tm_mon + 1, (tm.tm_year+1900) % 100,
 			tm.tm_hour, tm.tm_min, tm.tm_sec);
 	} else {
 		*ts = '\0';
 	}
 	pid_size = pid_max_digits();
-	printf("Total   Open  Close   Read  Write %*.*s  Process         %s%s\n",
+	(void)printf("Total   Open  Close   Read  Write %*.*s  Process         %s%s\n",
 		pid_size, pid_size, "PID",
 		(opt_flags & OPT_INODE) ? "Dev (Maj:Min) Inode" :
 		(opt_flags & OPT_DEVICE) ? "Dev (Maj:Min)" : "Pathname", ts);
@@ -1023,7 +1024,7 @@ static void file_stat_dump(const double duration, const unsigned long top)
 		if (top && j <= top) {
 			char buf[5][32];
 
-			printf("%s %s %s %s %s %*d %-15.15s %s\n",
+			(void)printf("%s %s %s %s %s %*d %-15.15s %s\n",
 				count_to_str(sorted[j]->total / dur, buf[0], sizeof(buf[0])),
 				count_to_str(sorted[j]->open / dur, buf[1], sizeof(buf[1])),
 				count_to_str(sorted[j]->close / dur, buf[2], sizeof(buf[2])),
@@ -1067,20 +1068,20 @@ static int parse_pid_list(char *arg)
 			errno = 0;
 			pid = strtol(token, NULL, 10);
 			if (errno) {
-				fprintf(stderr, "Invalid PID specified.\n");
+				(void)fprintf(stderr, "Invalid PID specified.\n");
 				return -1;
 			}
 		} else {
 			name = strdup(token);
 			if (!name) {
-				fprintf(stderr, "Out of memory allocating process name info.\n");
+				(void)fprintf(stderr, "Out of memory allocating process name info.\n");
 				return -1;
 			}
 			named_procs = true;
 		}
 		p = calloc(1, sizeof(proc_info_t));
 		if (!p) {
-			fprintf(stderr, "Out of memory allocating process info.\n");
+			(void)fprintf(stderr, "Out of memory allocating process info.\n");
 			free(name);
 			return -1;
 		}
@@ -1091,7 +1092,7 @@ static int parse_pid_list(char *arg)
 		proc_list = p;
 	}
 	if (proc_list == NULL) {
-		fprintf(stderr, "No valid process ID or names given.\n");
+		(void)fprintf(stderr, "No valid process ID or names given.\n");
 		return -1;
 	}
 	return 0;
@@ -1111,12 +1112,12 @@ static int parse_pathname_list(char *arg, pathname_t **list)
 
 		p = calloc(1, sizeof(pathname_t));
 		if (!p) {
-			fprintf(stderr, "Out of memory allocating pathname info.\n");
+			(void)fprintf(stderr, "Out of memory allocating pathname info.\n");
 			return -1;
 		}
 		p->pathname = strdup(token);
 		if (!p->pathname) {
-			fprintf(stderr, "Out of memory allocating pathname info.\n");
+			(void)fprintf(stderr, "Out of memory allocating pathname info.\n");
 			free(p);
 			return -1;
 		}
@@ -1127,7 +1128,7 @@ static int parse_pathname_list(char *arg, pathname_t **list)
 	}
 
 	if (!added) {
-		fprintf(stderr, "No valid pathnames were given.\n");
+		(void)fprintf(stderr, "No valid pathnames were given.\n");
 		return -1;
 	}
 	return 0;
@@ -1158,8 +1159,8 @@ static void pathname_list_free(pathname_t **list)
  */
 static void show_usage(void)
 {
-	printf("%s, version %s\n\n", app_name, VERSION);
-	printf("Options are:\n"
+	(void)printf("%s, version %s\n\n", app_name, VERSION);
+	(void)printf("Options are:\n"
 		"  -c     cumulative totals over time\n"
 		"  -d     strip directory off the filenames\n"
 		"  -D     order stats by unique device\n"
@@ -1224,7 +1225,7 @@ int main(int argc, char **argv)
 			break;
 		case 'p':
 			if (parse_pid_list(optarg) < 0) {
-				fprintf(stderr, "Invalid value for -p option.\n");
+				(void)fprintf(stderr, "Invalid value for -p option.\n");
 				exit(EXIT_FAILURE);
 			}
 			opt_flags |= OPT_PID;
@@ -1239,11 +1240,11 @@ int main(int argc, char **argv)
 			errno = 0;
 			top = strtol(optarg, NULL, 10);
 			if (errno) {
-				fprintf(stderr, "Invalid value for -t option.\n");
+				(void)fprintf(stderr, "Invalid value for -t option.\n");
 				exit(EXIT_FAILURE);
 			}
 			if (top < 1) {
-				fprintf(stderr, "Value for -t option must be 1 or more.\n");
+				(void)fprintf(stderr, "Value for -t option must be 1 or more.\n");
 				exit(EXIT_FAILURE);
 			}
 			break;
@@ -1258,7 +1259,7 @@ int main(int argc, char **argv)
 				exit(EXIT_FAILURE);
 			break;
 		case '?':
-			printf("Try '%s -h' for more information.\n", app_name);
+			(void)printf("Try '%s -h' for more information.\n", app_name);
 			exit(EXIT_FAILURE);
 		default:
 			show_usage();
@@ -1268,7 +1269,7 @@ int main(int argc, char **argv)
 	if (optind < argc) {
 		duration_secs = get_seconds(argv[optind++]);
 		if (duration_secs < 0.5) {
-			fprintf(stderr, "Duration must be 0.5 or more.\n");
+			(void)fprintf(stderr, "Duration must be 0.5 or more.\n");
 			exit(EXIT_FAILURE);
 		}
 	}
@@ -1277,34 +1278,34 @@ int main(int argc, char **argv)
 		errno = 0;
 		count = strtol(argv[optind++], NULL, 10);
 		if (errno) {
-			fprintf(stderr, "Invalid count value\n");
+			(void)fprintf(stderr, "Invalid count value\n");
 			exit(EXIT_FAILURE);
 		}
 		if (count < 1) {
-			fprintf(stderr, "Count must be > 0\n");
+			(void)fprintf(stderr, "Count must be > 0\n");
 			exit(EXIT_FAILURE);
 		}
 	}
 
 	if ((opt_flags & (OPT_INODE | OPT_DEVICE)) ==
 	    (OPT_INODE | OPT_DEVICE)) {
-		fprintf(stderr, "Cannot have -I and -D enabled together.\n");
+		(void)fprintf(stderr, "Cannot have -I and -D enabled together.\n");
 		exit(EXIT_FAILURE);
 	}
 
 	if ((getuid() != 0) || (geteuid() != 0)) {
-		fprintf(stderr, "%s requires root privileges to run.\n", app_name);
+		(void)fprintf(stderr, "%s requires root privileges to run.\n", app_name);
 		exit(EXIT_FAILURE);
 	}
 
 	memset(&new_action, 0, sizeof(new_action));
 	for (i = 0; signals[i] != -1; i++) {
 		new_action.sa_handler = signals[i] == SIGUSR1 ? handle_sigusr1 : handle_sig;
-		sigemptyset(&new_action.sa_mask);
+		(void)sigemptyset(&new_action.sa_mask);
 		new_action.sa_flags = 0;
 
 		if (sigaction(signals[i], &new_action, NULL) < 0) {
-			fprintf(stderr, "sigaction failed: errno=%d (%s)\n",
+			(void)fprintf(stderr, "sigaction failed: errno=%d (%s)\n",
 				errno, strerror(errno));
 			exit(EXIT_FAILURE);
 		}
@@ -1316,12 +1317,12 @@ int main(int argc, char **argv)
 
 	ret = posix_memalign(&buffer, BUFFER_SIZE, BUFFER_SIZE);
 	if (ret != 0 || buffer == NULL) {
-		fprintf(stderr,"cannot allocate 4K aligned buffer");
+		(void)fprintf(stderr,"cannot allocate 4K aligned buffer");
 		exit(EXIT_FAILURE);
 	}
 	fan_fd = fnotify_event_init();
 	if (fan_fd < 0) {
-		fprintf(stderr, "cannot init fnotify");
+		(void)fprintf(stderr, "cannot init fnotify");
 		exit(EXIT_FAILURE);
 	}
 
