@@ -14,4 +14,3 @@ Description: file activity monitoring tool
  system. It can be used to identify rogue file activity and discover
  which processes are performing open/close/read/write operations
  on the files.
-
