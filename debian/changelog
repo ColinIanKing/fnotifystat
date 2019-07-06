@@ -1,3 +1,13 @@
+fnotifystat (0.02.02-1) unstable; urgency=medium
+
+  * Makefile: bump version
+  * Makefile: Add travis file to dist rule
+  * Manual: fix spelling mistakes
+  * Update copyright year
+  * Add travis yaml file
+
+ -- Colin King <colin.king@canonical.com>  Sat, 6 Jul 2019 22:56:22 +0100
+
 fnotifystat (0.02.01-1) unstable; urgency=medium
 
   * Makefile: bump version
