@@ -42,7 +42,8 @@ fnotifystat.8.gz: fnotifystat.8
 dist:
 	rm -rf fnotifystat-$(VERSION)
 	mkdir fnotifystat-$(VERSION)
-	cp -rp Makefile fnotifystat.c fnotifystat.8 COPYING fnotifystat-$(VERSION)
+	cp -rp Makefile fnotifystat.c fnotifystat.8 COPYING \
+		.travis.yml fnotifystat-$(VERSION)
 	tar -zcf fnotifystat-$(VERSION).tar.gz fnotifystat-$(VERSION)
 	rm -rf fnotifystat-$(VERSION)
 
