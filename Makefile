@@ -32,6 +32,7 @@ endif
 
 BINDIR=/usr/sbin
 MANDIR=/usr/share/man/man8
+BASHDIR=/usr/share/bash-completion/completions
 
 fnotifystat: fnotifystat.o
 	$(CC) $(CFLAGS) $< -o $@ $(LDFLAGS)
@@ -43,7 +44,7 @@ dist:
 	rm -rf fnotifystat-$(VERSION)
 	mkdir fnotifystat-$(VERSION)
 	cp -rp Makefile fnotifystat.c fnotifystat.8 COPYING \
-		.travis.yml fnotifystat-$(VERSION)
+		.travis.yml bash-completion fnotifystat-$(VERSION)
 	tar -zcf fnotifystat-$(VERSION).tar.gz fnotifystat-$(VERSION)
 	rm -rf fnotifystat-$(VERSION)
 
@@ -56,3 +57,5 @@ install: fnotifystat fnotifystat.8.gz
 	cp fnotifystat ${DESTDIR}${BINDIR}
 	mkdir -p ${DESTDIR}${MANDIR}
 	cp fnotifystat.8.gz ${DESTDIR}${MANDIR}
+	mkdir -p ${DESTDIR}${BASHDIR}
+	cp bash-completion/fnotifystat ${DESTDIR}${BASHDIR}
