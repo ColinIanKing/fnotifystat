@@ -1,3 +1,11 @@
+fnotifystat (0.02.04-1) unstable; urgency=medium
+
+  * Makefile: bump version
+  * Add bash completions
+  * Update copyright to 2020
+
+ -- Colin King <colin.king@canonical.com>  Wed, 26 Feb 2020 13:51:22 +0000
+
 fnotifystat (0.02.03-1) unstable; urgency=medium
 
   * Makefile: bump version
