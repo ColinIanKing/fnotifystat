@@ -1,3 +1,13 @@
+fnotifystat (0.02.05-1) unstable; urgency=medium
+
+  * Makefile: bump version
+  * Fix early return from loop on bad fstat
+  * Remove trailing whitespace
+  * Add null check on fopen of /proc/mount
+  * Add device name information with -D and -I flags
+
+ -- Colin King <colin.king@canonical.com>  Thu, 27 Feb 2020 12:37:11 +0000
+
 fnotifystat (0.02.04-1) unstable; urgency=medium
 
   * Makefile: bump version
