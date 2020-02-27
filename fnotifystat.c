@@ -255,6 +255,8 @@ static void dev_cache_mounts(void)
 	char buffer[1024];
 
 	fp = fopen("/proc/mounts", "r");
+	if (!fp)
+		return;
 
 	while (fgets(buffer, sizeof(buffer), fp)) {
 		struct stat statbuf;
