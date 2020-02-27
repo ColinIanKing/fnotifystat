@@ -276,7 +276,7 @@ static void dev_cache_mounts(void)
 		*ptr = '\0';
 
 		if (stat(path, &statbuf) < 0)
-			return;
+			continue;
 		dev_add(path, statbuf.st_dev);
 	}
 	(void)fclose(fp);
