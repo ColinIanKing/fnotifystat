@@ -43,6 +43,7 @@
 
 #define TABLE_SIZE		(17627)		/* Best if prime */
 #define BUFFER_SIZE		(4096)
+#define DEV_HASH_SIZE		(1021)
 
 #define OPT_VERBOSE		(0x00000001)	/* Verbose mode */
 #define OPT_DIRNAME_STRIP 	(0x00000002)	/* Remove leading path */
@@ -96,12 +97,19 @@ typedef struct {
 
 /* stashed context for verbose info */
 typedef struct {
-	char *		filename;		/* Filename */
+	char 		*filename;		/* Filename */
 	uint64_t	mask;			/* Event mask */
 	uint64_t	count;			/* Merged event count */
 	file_stat_t	*fs;			/* File Info */
 	struct tm	tm;			/* Time of previous event */
 } stash_info_t;
+
+/* cached dev names */
+typedef struct dev_info {
+	char		*name;			/* /dev device name */
+	dev_t		dev;			/* dev number */
+	struct dev_info *next;			/* next device */
+} dev_info_t;
 
 static const char *app_name = "fnotifystat";	/* name of this tool */
 static file_stat_t *file_stats[TABLE_SIZE];	/* hash table of file stats */
@@ -114,6 +122,7 @@ static pid_t my_pid;				/* pid of this programme */
 static bool named_procs = false;
 static pathname_t *paths_include;		/* paths to include */
 static pathname_t *paths_exclude;		/* paths to exclude */
+static dev_info_t *dev_cache[DEV_HASH_SIZE];	/* device to device name hash */
 
 /*
  *  Attempt to catch a range of signals so
@@ -177,6 +186,177 @@ static const scale_t time_scales[] = {
 	{ 'w',  7 * 24 * 3600 },
 	{ 'y',  365 * 24 * 3600 },
 };
+
+/*
+ *  dev_hash()
+ *	hash a device number
+ */
+static inline int dev_hash(const dev_t dev)
+{
+	const int hash = (major(dev) << 16) | minor(dev);
+
+	return hash % DEV_HASH_SIZE;
+}
+
+/*
+ *  dev_find()
+ *	find a device by dev number in the device cache
+ */
+static char *dev_find(const dev_t dev)
+{
+	const int hash = dev_hash(dev);
+	dev_info_t *d = dev_cache[hash];
+
+	while (d) {
+		if (d->dev == dev)
+			return d->name;
+		d = d->next;
+	}
+	return NULL;
+}
+
+/*
+ *  dev_add()
+ *	add a device to the device cache
+ */
+static void dev_add(const char *name, const dev_t dev)
+{
+	const int hash = dev_hash(dev);
+	dev_info_t *d = dev_cache[hash];
+
+	/* Don't and if we already have it */
+	while (d) {
+		if (d->dev == dev)
+			return;
+		d = d->next;
+	}
+
+	d = malloc(sizeof(*d));
+	if (!d)
+		return;
+
+	d->name = strdup(name);
+	if (!d->name) {
+		free(d);
+		return;
+	}
+	d->dev = dev;
+	d->next = dev_cache[hash];
+	dev_cache[hash] = d;
+}
+
+/*
+ *  dev_cache_mounts()
+ *	add dev number of mount points too
+ */
+static void dev_cache_mounts(void)
+{
+	FILE *fp;
+	char buffer[1024];
+
+	fp = fopen("/proc/mounts", "r");
+
+	while (fgets(buffer, sizeof(buffer), fp)) {
+		struct stat statbuf;
+		char *ptr = buffer;
+		char *path;
+
+		while (*ptr && *ptr != ' ' && *ptr != '\n')
+			ptr++;
+
+		if (!*ptr)
+			continue;
+		ptr++;
+		path = ptr;
+
+		while (*ptr && *ptr != ' ' && *ptr != '\n')
+			ptr++;
+		*ptr = '\0';
+
+		if (stat(path, &statbuf) < 0)
+			return;
+		dev_add(path, statbuf.st_dev);
+	}
+	(void)fclose(fp);
+}
+
+/*
+ *  dev_cache_devs()
+ *	cache the device name of devices based on device number
+ */
+static void dev_cache_devs(const char *dev_path, const int depth, const int max_depth)
+{
+	DIR *dir;
+	struct dirent *dirp;
+
+	dir = opendir(dev_path);
+	if (!dir)
+		return;
+
+	while ((dirp = readdir(dir)) != NULL) {
+		struct stat statbuf;
+		char path[PATH_MAX];
+
+		if (dirp->d_name[0] == '.')
+			continue;
+
+		snprintf(path, sizeof(path), "%s/%s", dev_path, dirp->d_name);
+		if (stat(path, &statbuf) < 0)
+			continue;
+
+		/* Symlink, ignore */
+		if ((statbuf.st_mode & S_IFMT) == S_IFLNK)
+			continue;
+		if ((depth < max_depth) && ((statbuf.st_mode & S_IFMT) == S_IFDIR)) {
+			dev_cache_devs(path, depth + 1, max_depth);
+			continue;
+		}
+
+		/* Not a block dev, ignore */
+		if ((statbuf.st_mode & S_IFMT) != S_IFBLK)
+			continue;
+
+		dev_add(path, statbuf.st_rdev);
+	}
+	(void)closedir(dir);
+}
+
+/*
+ *   dev_cache_free()
+ *	free the device cache
+ */
+static void dev_cache_free(void)
+{
+	size_t i;
+
+	for (i = 0; i < DEV_HASH_SIZE; i++) {
+		dev_info_t *d = dev_cache[i];
+
+		while (d) {
+			dev_info_t *next = d->next;
+
+			free(d->name);	
+			free(d);
+			d = next;
+		}
+	}
+}
+
+/*
+ *  dev_name()
+ *	find the name relating to a device number
+ */
+static char *dev_name(const dev_t dev)
+{
+	static char buffer[256];
+	char devstr[32];
+	char *devname = dev_find(dev);
+
+	snprintf(devstr, sizeof(devstr), "%u:%u", major(dev), minor(dev));
+	snprintf(buffer, sizeof(buffer), "%-10.10s%s%s",
+		devstr, devname ? " " : "", devname ? devname : "");
+	return buffer;
+}
 
 /*
  *  pid_max_digits()
@@ -733,14 +913,8 @@ static char *fnotify_get_filename(const pid_t pid, const int fd)
 				(void)snprintf(buf, sizeof(buf), "%-10.10s %11s",
 					"(?:?)", "?");
 			} else {
-				char dev[32];
-
-				(void)snprintf(dev, sizeof(dev), "%u:%u",
-					major(statbuf.st_dev),
-					minor(statbuf.st_dev));
-				(void)snprintf(buf, sizeof(buf), "%-10.10s %11lu",
-					dev,
-					statbuf.st_ino);
+				(void)snprintf(buf, sizeof(buf), "%11lu %s",
+					statbuf.st_ino, dev_name(statbuf.st_dev));
 			}
 			filename = strdup(buf);
 		}
@@ -750,9 +924,7 @@ static char *fnotify_get_filename(const pid_t pid, const int fd)
 			if (fstat(fd, &statbuf) < 0) {
 				(void)snprintf(buf, sizeof(buf), "?:?");
 			} else {
-				(void)snprintf(buf, sizeof(buf), "%u:%u",
-					major(statbuf.st_dev),
-					minor(statbuf.st_dev));
+				(void)snprintf(buf, sizeof(buf), "%s", dev_name(statbuf.st_dev));
 			}
 			filename = strdup(buf);
 		} else {
@@ -1018,8 +1190,8 @@ static void file_stat_dump(const double duration, const unsigned long top)
 	pid_size = pid_max_digits();
 	(void)printf("Total   Open  Close   Read  Write %*.*s  Process         %s%s\n",
 		pid_size, pid_size, "PID",
-		(opt_flags & OPT_INODE) ? "Dev (Maj:Min) Inode" :
-		(opt_flags & OPT_DEVICE) ? "Dev (Maj:Min)" : "Pathname", ts);
+		(opt_flags & OPT_INODE) ? "      Inode Device     Device Name" :
+		(opt_flags & OPT_DEVICE) ? "Device     Device Name" : "Pathname", ts);
 	for (j = 0; j < file_stats_size; j++) {
 		if (top && j <= top) {
 			char buf[5][32];
@@ -1311,6 +1483,12 @@ int main(int argc, char **argv)
 		}
 	}
 
+	/* Pre-cache dev and mount dev info */
+	if (opt_flags & (OPT_INODE | OPT_DEVICE)) {
+		dev_cache_devs("/dev", 0, 5);
+		dev_cache_mounts();
+	}
+
 	proc_info_get_all();
 
 	my_pid = getpid();
@@ -1386,6 +1564,7 @@ int main(int argc, char **argv)
 	proc_list_free(&proc_list);
 	pathname_list_free(&paths_include);
 	pathname_list_free(&paths_exclude);
+	dev_cache_free();
 
 	exit(EXIT_SUCCESS);
 }
