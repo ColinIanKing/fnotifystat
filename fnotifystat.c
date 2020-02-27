@@ -337,7 +337,7 @@ static void dev_cache_free(void)
 		while (d) {
 			dev_info_t *next = d->next;
 
-			free(d->name);	
+			free(d->name);
 			free(d);
 			d = next;
 		}
