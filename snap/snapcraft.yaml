@@ -1,0 +1,35 @@
+name: fnotifystat
+summary: tool to measure page faults
+description: fnotifystat measures page fault activity and swap utilization of processes
+confinement: classic
+grade: stable
+assumes: [snapd2.37]
+base: core18
+type: app
+adopt-info: fnotifystat
+
+environment:
+    CFLAGS: '-fstack-protector-strong -Wformat -Werror=format-security'
+    LDFLAGS: Wl,-z,relro
+
+parts:
+    fnotifystat:
+        plugin: make
+        source: https://github.com/ColinIanKing/fnotifystat.git
+        override-pull: |
+            snapcraftctl pull
+            description=$(git describe HEAD --tags)
+            sha=$(echo $description | tr '-' ' ' | awk '{print $NF}')
+            version=${description%$sha}
+            commits=$(git log --oneline | wc -l)
+            date=$(date +'%Y%m%d')
+            snapcraftctl set-version "$version$date-$commits-$sha"
+        build-packages:
+            - gcc
+            - make
+apps:
+    fnotifystat:
+        plugs: 
+            - home
+            - system-observe
+        command: usr/sbin/fnotifystat
