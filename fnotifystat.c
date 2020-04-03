@@ -1511,7 +1511,7 @@ int main(int argc, char **argv)
 		if (gettimeofday(&tv1, NULL) < 0)
 			pr_error("gettimeofday failed");
 
-		while(!stop_fnotifystat) {
+		while (!stop_fnotifystat) {
 			fd_set rfds;
 			double remaining;
 
