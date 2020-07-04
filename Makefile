@@ -44,7 +44,7 @@ dist:
 	rm -rf fnotifystat-$(VERSION)
 	mkdir fnotifystat-$(VERSION)
 	cp -rp Makefile fnotifystat.c fnotifystat.8 COPYING \
-		.travis.yml bash-completion fnotifystat-$(VERSION)
+		.travis.yml bash-completion snap fnotifystat-$(VERSION)
 	tar -zcf fnotifystat-$(VERSION).tar.gz fnotifystat-$(VERSION)
 	rm -rf fnotifystat-$(VERSION)
 
