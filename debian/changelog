@@ -1,3 +1,14 @@
+fnotifystat (0.02.06-1) unstable; urgency=medium
+
+  * Makefile: bump version
+  * Debian/control: update compat to 13, remove compat file, add
+    Rules-Requires-Root no rule
+  * Makefile: add snap to dist rule
+  * Add in missing space
+  * Add snapcraft ruless
+
+ -- Colin King <colin.king@canonical.com>  Sat, 4 Jul 2020 11:05:22 +0100
+
 fnotifystat (0.02.05-1) unstable; urgency=medium
 
   * Makefile: bump version
