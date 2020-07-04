@@ -1,9 +1,12 @@
 Source: fnotifystat
+Rules-Requires-Root: no
 Section: utils
 Priority: optional
 Maintainer: Colin King <colin.king@canonical.com>
 Standards-Version: 4.1.2
-Build-Depends: debhelper (>= 12)
+Build-Depends: debhelper (>= 13),
+               debhelper-compat (=13),
+               libncurses5-dev
 Homepage: http://kernel.ubuntu.com/~cking/fnotifystat
 
 Package: fnotifystat
