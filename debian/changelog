@@ -1,3 +1,12 @@
+fnotifystat (0.02.07-1) unstable; urgency=medium
+
+  * Makefile: bump version
+  * Fix stashing of fs, we need to make a copy since fs can be free'd
+  * snapcraft: remove trailing space after plugs: entry
+  * Fix memory leak when using the -n option (LP: #1898991)
+
+ -- Colin King <colin.king@canonical.com>  Thu, 8 Oct 2020 11:52:15 +0100
+
 fnotifystat (0.02.06-1) unstable; urgency=medium
 
   * Makefile: bump version
