@@ -100,8 +100,9 @@ typedef struct {
 	char 		*filename;		/* Filename */
 	uint64_t	mask;			/* Event mask */
 	uint64_t	count;			/* Merged event count */
-	file_stat_t	*fs;			/* File Info */
+	file_stat_t	fs;			/* File Info */
 	struct tm	tm;			/* Time of previous event */
+	bool		used;			/* true if been stashed before */
 } stash_info_t;
 
 /* cached dev names */
@@ -963,6 +964,44 @@ static const char *fnotify_mask_to_str(const int mask)
 }
 
 /*
+ *  fnotify_stash()
+ *	make a stashed copy of fs and stash data
+ */
+static void fnotify_stash(
+	stash_info_t *info,
+	file_stat_t *fs,
+	const uint64_t mask,
+	char *filename,
+	struct tm *tm,
+	uint64_t count)
+{
+	if (fs) {
+		/*
+		 *  fs needs to be copied as it can
+		 *  be free'd later on, we don't need
+		 *  to copy path or next as these aren't
+		 *  used so nullify them.
+		 */
+		info->fs.open = fs->open;
+		info->fs.close = fs->close;
+		info->fs.read = fs->read;
+		info->fs.write = fs->write;
+		info->fs.total = fs->total;
+		info->fs.path = NULL;
+		info->fs.next = NULL;
+		info->fs.pid = fs->pid;
+		/*
+		 *  and stash misc info too
+		 */
+		info->mask = mask;
+		info->filename = filename;
+		info->tm = *tm;
+		info->count = count;
+		info->used = true;
+	}
+}
+
+/*
  *  fnotify_event_show()
  *	if event is another masked event on any previous
  *	file activity just or-in the event mask and return,
@@ -988,22 +1027,23 @@ static void fnotify_event_show(
 	}
 	get_tm(&tm);
 
-	if (previous.fs == NULL) {
+	if (!previous.used) {
 		/* Stash for first the first time */
-		previous.fs = fs;
-		previous.mask = mask;
-		previous.filename = filename;
-		previous.tm = tm;
-		previous.count = 0;
+		fnotify_stash(&previous, fs, mask, filename, &tm, 0);
 		return;
 	}
 
 	/*
-	 * merge mode, same fs info and filename..
-	 * then merge flags and wait for next event
+	 *  Merge mode, same fs info and filename?
+	 *  ..then merge flags and wait for next event
 	 */
 	if ((opt_flags & OPT_MERGE) &&
-	    (fs == previous.fs) &&
+	    (fs->pid == previous.fs.pid) &&
+	    (fs->open == previous.fs.open) &&
+	    (fs->close == previous.fs.close) &&
+	    (fs->read == previous.fs.read) &&
+	    (fs->write == previous.fs.write) &&
+	    (fs->total == previous.fs.total) &&
             (tm.tm_sec == previous.tm.tm_sec) &&
             (tm.tm_min == previous.tm.tm_min) &&
             (tm.tm_hour == previous.tm.tm_hour) &&
@@ -1030,18 +1070,15 @@ static void fnotify_event_show(
 		previous.tm.tm_hour, previous.tm.tm_min, previous.tm.tm_sec,
 		str,
 		fnotify_mask_to_str(previous.mask),
-		pid_size, previous.fs->pid,
-		proc_info_get(previous.fs->pid)->cmdline,
+		pid_size,
+		previous.fs.pid,
+		proc_info_get(previous.fs.pid)->cmdline,
 		(opt_flags & OPT_DIRNAME_STRIP) ?
 			basename(previous.filename) : previous.filename);
 
 	/* Free old filename and stash new event */
 	free(previous.filename);
-	previous.fs = fs;
-	previous.mask = mask;
-	previous.filename = filename;
-	previous.tm = tm;
-	previous.count = 0;
+	fnotify_stash(&previous, fs, mask, filename, &tm, 0);
 }
 
 /*
