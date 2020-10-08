@@ -29,7 +29,7 @@ parts:
             - make
 apps:
     fnotifystat:
-        plugs: 
+        plugs:
             - home
             - system-observe
         command: usr/sbin/fnotifystat
