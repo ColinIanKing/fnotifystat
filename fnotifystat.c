@@ -765,6 +765,7 @@ static void file_stat_free(void)
 			free(fs);
 			fs = next;
 		}
+		file_stats[i] = NULL;
 	}
 }
 
@@ -1552,8 +1553,12 @@ int main(int argc, char **argv)
 			pr_error("gettimeofday failed");
 
 		duration = timeval_double(&tv2) - timeval_double(&tv1);
-		if (!(opt_flags & OPT_NOSTATS))
+		if (!(opt_flags & OPT_NOSTATS)) {
 			file_stat_dump(duration, top);
+		} else if (!(opt_flags & OPT_CUMULATIVE)) {
+			file_stat_free();
+			file_stats_size = 0;
+		}
 	}
 
 	/* Flush and free previous event */
