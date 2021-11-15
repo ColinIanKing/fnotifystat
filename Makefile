@@ -27,7 +27,7 @@ ifeq ($(PEDANTIC),1)
 CFLAGS += -Wabi -Wcast-qual -Wfloat-equal -Wmissing-declarations \
 	-Wmissing-format-attribute -Wno-long-long -Wpacked \
 	-Wredundant-decls -Wshadow -Wno-missing-field-initializers \
-	-Wno-missing-braces -Wno-sign-compare -Wno-multichar
+	-Wno-missing-braces -Wno-sign-compare -Wno-multichar -fanalyzer
 endif
 
 BINDIR=/usr/sbin
@@ -44,7 +44,7 @@ dist:
 	rm -rf fnotifystat-$(VERSION)
 	mkdir fnotifystat-$(VERSION)
 	cp -rp Makefile fnotifystat.c fnotifystat.8 COPYING \
-		.travis.yml bash-completion snap fnotifystat-$(VERSION)
+		.travis.yml bash-completion snap README.md fnotifystat-$(VERSION)
 	tar -zcf fnotifystat-$(VERSION).tar.gz fnotifystat-$(VERSION)
 	rm -rf fnotifystat-$(VERSION)
 
