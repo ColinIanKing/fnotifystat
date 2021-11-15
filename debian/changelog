@@ -1,3 +1,18 @@
+fnotifystat (0.02.08-1) unstable; urgency=medium
+
+  * Makefile: bump version
+  * fnotifystat.c: update copyright email address
+  * Makefile: update copyright email
+  * Makefile: Add README.md to make dist rule
+  * manual: update date, author email and copyright
+  * debian/watch: update watch path for tarball, move to version 4
+  * debian/copyright: Update copyright and git URL
+  * debian/control: update author email address and project URL
+  * Add README.md
+  * update copyright to 2021
+
+ -- Colin Ian King <colin.i.king@gmail.com>  Mon, 15 Nov 2021 19:30:34 +0000
+
 fnotifystat (0.02.07-1) unstable; urgency=medium
 
   * Makefile: bump version
