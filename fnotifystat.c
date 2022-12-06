@@ -973,7 +973,7 @@ static void fnotify_stash(
 	file_stat_t *fs,
 	const uint64_t mask,
 	char *filename,
-	struct tm *tm,
+	const struct tm *tm,
 	uint64_t count)
 {
 	if (fs) {
