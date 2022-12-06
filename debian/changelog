@@ -1,3 +1,13 @@
+fnotifystat (0.02.09-1) unstable; urgency=medium
+
+  * Makefile: bump version
+  * Debian/control: update standards version to 4.6.1
+  * Add count_rate helper to perform rate converstion and handle zero duration case
+  * fnotify_stash: constify the pointer tm function parameter
+  * Update copyright
+
+ -- Colin Ian King <colin.i.king@gmail.com>  Tue, 6 Dec 2022 16:34:17 +0000
+
 fnotifystat (0.02.08-1) unstable; urgency=medium
 
   * Makefile: bump version
