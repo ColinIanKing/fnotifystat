@@ -1187,6 +1187,16 @@ static int file_stat_cmp(const void *p1, const void *p2)
 }
 
 /*
+ *  count_rate()
+ *	convert count and duration to rate metrics, workaround for
+ *	zero duration to avoid division by zeroa
+ */
+static double count_rate(const uint64_t count, const double duration)
+{
+	return (duration > 0.0) ? (double)count / duration : 0.0;
+}
+
+/*
  *  file_stat_dump()
  *	dump file stats and free hash table for next iteration
  */
@@ -1238,11 +1248,11 @@ static void file_stat_dump(const double duration, const unsigned long top)
 			char buf[5][32];
 
 			(void)printf("%s %s %s %s %s %*d %-15.15s %s\n",
-				count_to_str(sorted[j]->total / dur, buf[0], sizeof(buf[0])),
-				count_to_str(sorted[j]->open / dur, buf[1], sizeof(buf[1])),
-				count_to_str(sorted[j]->close / dur, buf[2], sizeof(buf[2])),
-				count_to_str(sorted[j]->read/ dur, buf[3], sizeof(buf[3])),
-				count_to_str(sorted[j]->write / dur, buf[4], sizeof(buf[4])),
+				count_to_str(count_rate(sorted[j]->total, dur), buf[0], sizeof(buf[0])),
+				count_to_str(count_rate(sorted[j]->open, dur), buf[1], sizeof(buf[1])),
+				count_to_str(count_rate(sorted[j]->close, dur), buf[2], sizeof(buf[2])),
+				count_to_str(count_rate(sorted[j]->read, dur), buf[3], sizeof(buf[3])),
+				count_to_str(count_rate(sorted[j]->write, dur), buf[4], sizeof(buf[4])),
 				pid_size, sorted[j]->pid,
 				proc_info_get(sorted[j]->pid)->cmdline,
 				(opt_flags & OPT_DIRNAME_STRIP) ?
