@@ -2,7 +2,8 @@ fnotifystat (0.02.09-1) unstable; urgency=medium
 
   * Makefile: bump version
   * Debian/control: update standards version to 4.6.1
-  * Add count_rate helper to perform rate converstion and handle zero duration case
+  * Add count_rate helper to perform rate converstion and handle
+    zero duration case
   * fnotify_stash: constify the pointer tm function parameter
   * Update copyright
 
