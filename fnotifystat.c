@@ -1241,8 +1241,8 @@ static void file_stat_dump(const double duration, const unsigned long top)
 	pid_size = pid_max_digits();
 	(void)printf("Total   Open  Close   Read  Write %*.*s  Process         %s%s\n",
 		pid_size, pid_size, "PID",
-		(opt_flags & OPT_INODE) ? "      Inode Device     Device Name" :
-		(opt_flags & OPT_DEVICE) ? "Device     Device Name" : "Pathname", ts);
+		(opt_flags & OPT_INODE) ? "      Inode Device     Name       " :
+		(opt_flags & OPT_DEVICE) ? "Device     Name       " : "Pathname", ts);
 	for (j = 0; j < file_stats_size; j++) {
 		if (top && j <= top) {
 			char buf[5][32];
