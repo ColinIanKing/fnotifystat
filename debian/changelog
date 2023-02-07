@@ -1,3 +1,15 @@
+fnotifystat (0.02.10-1) unstable; urgency=medium
+
+  * Makefile: use xz compression for dist rule
+  * debian/changelog: fix spelling mistake in changelog
+  * debian/changelog: break an overly wide line
+  * Makefile: bump version
+  * debian/control: use standards version 4.6.2
+  * debian/control: libncurses-dev instead of libncurses5-dev
+  * Update copyright year
+
+ -- Colin Ian King <colin.i.king@gmail.com>  Tue, 7 Feb 2023 14:50:57 +0000
+
 fnotifystat (0.02.09-1) unstable; urgency=medium
 
   * Makefile: bump version
