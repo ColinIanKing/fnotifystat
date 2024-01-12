@@ -1,3 +1,15 @@
+fnotifystat (0.02.11-1) unstable; urgency=medium
+
+  * Makefile: bump version
+  * debian/rules: add missing hardening settings
+  * Update copyright to 2024
+  * Check for array bounds limit while parsing pid length string
+  * Makefile: remove snap from make dist rule
+  * Remove snapcraft
+  * Replace "Device Name" with "Name"
+
+ -- Colin Ian King <colin.i.king@gmail.com>  Fri, 12 Jan 2024 09:49:14 +0000
+
 fnotifystat (0.02.10-1) unstable; urgency=medium
 
   * Makefile: use xz compression for dist rule
