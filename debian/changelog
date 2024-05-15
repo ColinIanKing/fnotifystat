@@ -1,3 +1,10 @@
+fnotifystat (0.03.00-1) unstable; urgency=medium
+
+  * Makefile: bump version
+  * Add sorting options -w (writes) and -r (reads)
+
+ -- Colin Ian King <colin.i.king@gmail.com>  Wed, 15 May 2024 10:52:11 +0100
+
 fnotifystat (0.02.11-1) unstable; urgency=medium
 
   * Makefile: bump version
