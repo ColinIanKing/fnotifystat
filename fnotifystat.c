@@ -58,6 +58,8 @@
 #define OPT_DEVICE		(0x00000200)	/* Stats by mount */
 #define OPT_INODE		(0x00000400)	/* Filenames by inode, dev */
 #define OPT_FORCE		(0x00000800)	/* Force output */
+#define OPT_SORT_BY_READS	(0x00001000)	/* Sort by reads */
+#define OPT_SORT_BY_WRITES	(0x00002000)	/* Sort by writes */
 
 #define PROC_CACHE_LIFE		(120)		/* Refresh cached pid info timeout */
 
@@ -188,6 +190,22 @@ static const scale_t time_scales[] = {
 	{ 'w',  7 * 24 * 3600 },
 	{ 'y',  365 * 24 * 3600 },
 };
+
+
+/*
+ *  popcount()
+ *	population count (count number of 1 bits) in an unsigned int
+ */
+static inline int popcount(const unsigned int val)
+{
+	/* Brian Kernighan's count bits */
+	int j;
+	unsigned int v = val;
+
+	for (j = 0; v; j++)
+		v &= v - 1;
+	return j;
+}
 
 /*
  *  dev_hash()
@@ -1170,11 +1188,28 @@ static int file_stat_cmp(const void *p1, const void *p2)
 	file_stat_t *const *fs2 = (file_stat_t *const *)p2;
 
 	if (opt_flags & OPT_SORT_BY_PID) {
+		/* Sort smallest to largest PID */
 		if ((*fs1)->pid < (*fs2)->pid)
 			return -1;
 		if ((*fs1)->pid > (*fs2)->pid)
 			return 1;
 		/* Fall through if pids equal */
+	}
+	if (opt_flags & OPT_SORT_BY_WRITES) {
+		/* Sort largest to smallest writes */
+		if ((*fs1)->write < (*fs2)->write)
+			return 1;
+		if ((*fs1)->write > (*fs2)->write)
+			return -1;
+		/* Fall through if writes equal */
+	}
+	if (opt_flags & OPT_SORT_BY_READS) {
+		/* Sort largest to smallest reads */
+		if ((*fs1)->read < (*fs2)->read)
+			return 1;
+		if ((*fs1)->read > (*fs2)->read )
+			return -1;
+		/* Fall through if reads equal */
 	}
 
 	if ((*fs1)->total == (*fs2)->total)
@@ -1395,10 +1430,12 @@ static void show_usage(void)
 		"  -n     no stats, just -v verbose mode only\n"
 		"  -p PID collect stats for just process with pid PID\n"
 		"  -P     sort stats by process ID\n"
+		"  -r     sort stats by reads\n"
 		"  -s     disable scaling of file counts\n"
 		"  -t N   show just the busiest N files\n"
 		"  -T     show timestamp\n"
 		"  -v     verbose mode, dump out all file activity\n"
+		"  -w     sort stats by writes\n"
 		"  -x     specify pathnames to exclude on path events\n");
 }
 
@@ -1414,7 +1451,7 @@ int main(int argc, char **argv)
 	struct timeval tv1, tv2;
 
 	for (;;) {
-		int c = getopt(argc, argv, "hvdt:p:PcTsi:x:nmMDIf");
+		int c = getopt(argc, argv, "hvdt:p:PcTrsi:wx:nmMDIf");
 		if (c == -1)
 			break;
 		switch (c) {
@@ -1456,6 +1493,9 @@ int main(int argc, char **argv)
 		case 'P':
 			opt_flags |= OPT_SORT_BY_PID;
 			break;
+		case 'r':
+			opt_flags |= OPT_SORT_BY_READS;
+			break;
 		case 's':
 			opt_flags &= ~OPT_SCALE;
 			break;
@@ -1476,6 +1516,9 @@ int main(int argc, char **argv)
 			break;
 		case 'v':
 			opt_flags |= OPT_VERBOSE;
+			break;
+		case 'w':
+			opt_flags |= OPT_SORT_BY_WRITES;
 			break;
 		case 'x':
 			if (parse_pathname_list(optarg, &paths_exclude))
@@ -1510,8 +1553,12 @@ int main(int argc, char **argv)
 		}
 	}
 
-	if ((opt_flags & (OPT_INODE | OPT_DEVICE)) ==
-	    (OPT_INODE | OPT_DEVICE)) {
+	if (popcount(opt_flags & (OPT_SORT_BY_PID | OPT_SORT_BY_READS | OPT_SORT_BY_WRITES)) > 1) {
+		(void)fprintf(stderr, "Cannot have -P, -r or -w enabled together.\n");
+		exit(EXIT_FAILURE);
+	}
+
+	if (popcount(opt_flags & (OPT_INODE | OPT_DEVICE)) > 1) {
 		(void)fprintf(stderr, "Cannot have -I and -D enabled together.\n");
 		exit(EXIT_FAILURE);
 	}
